@@ -16,6 +16,6 @@
 		
 3. Cancel ticket
 
-4. Update train positions
+4. Simulating Trains
 	- Maybe we can simulate everything...like in games...but very basic
 	- Trains can eventually reach a destination
