@@ -1,0 +1,14 @@
+--- CORE ---
+1. Train timings
+	- Store station names (linear route or graph?)
+	- Set trains going back and forth on some particular routes (only one train for linear route)
+	- Can calculate timings (Station name and time of arrival/departure) based on above two
+	
+2. Book ticket
+	2.1. User side
+		- Search based on starting and ending stations, display available trains and time of arrival/departure
+		- Tell how much %age of seats are full for a given train displayed above
+	2.2. System side
+		- Store user seat no. and time of boarding/unboarding for each train
+		
+3. Cancel ticket
