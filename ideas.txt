@@ -10,5 +10,12 @@
 		- Tell how much %age of seats are full for a given train displayed above
 	2.2. System side
 		- Store user seat no. and time of boarding/unboarding for each train
+	2.3 Credentials
+		- User will have to enter credentials for booking ticket (Store them in a database(sqlite3 probably) or simply json?)
+		- We will accept dummy bank account for transaction (this isn't a banking system!), or just don't ask for transaction
 		
 3. Cancel ticket
+
+4. Update train positions
+	- Maybe we can simulate everything...like in games...but very basic
+	- Trains can eventually reach a destination
