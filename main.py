@@ -11,6 +11,9 @@ LOCKED = 0
 UNLOCKED = 1
 CREATE_ACCOUNT = 2
 LOGIN = 3
+WITHDRAW = 4
+DEPOSIT = 5
+
 USERS = {} # Associate user with unique id
 STATE = LOCKED
 LOGGED_USER = None # User instance
@@ -19,10 +22,13 @@ def login(username, password):
     if username in USERS:
         user = USERS[username]
         if user.password == password:
-            return LOGIN_SUCCESS
+            return LOGIN_SUCCESS, user 
         else:
-            return LOGIN_PASSWORD_INCORRECT
-    return LOGIN_USER_NOTFOUND
+            return LOGIN_PASSWORD_INCORRECT, None
+    return LOGIN_USER_NOTFOUND, None
+
+def logout() :
+    LOGGED_USER = None
 
 def create_new_user(username, password):
     if username not in USERS:
@@ -32,6 +38,15 @@ def create_new_user(username, password):
     else:
         return False
 
+def withdraw_amount(amount) :
+    if amount > LOGGED_USER.balance :
+        return False
+    else :
+        LOGGED_USER.balance -= amount
+        return True
+    
+def deposit_amount(amount) :
+    LOGGED_USER.balance += amount
 
 class User:
     balance= 0
@@ -68,8 +83,9 @@ if __name__ == '__main__':
             password = input("(Enter NEW Password) -> ")
             creation_status = create_new_user(username, password)
             if creation_status:
-                login(username, password)
+                _, user = login(username, password)
                 STATE = UNLOCKED
+                LOGGED_USER = user
             else:
                 print("Bhai kya kar rha hai")
                 print("User already exists with this username. Choose anther one.")
@@ -79,14 +95,56 @@ if __name__ == '__main__':
             username = input("(Enter Username) -> ")
             password = input("(Enter Password) -> ")
 
-            login_status = login(username, password)
+            login_status, user = login(username, password)
 
             if login_status == LOGIN_SUCCESS:
                 STATE = UNLOCKED
+                LOGGED_USER = user
             elif login_status == LOGIN_PASSWORD_INCORRECT:
                 print("Bhai kya kar rha hai")
                 print("Incorrect Password.")
             elif login_status == LOGIN_USER_NOTFOUND:
                 print("Bhai kya kar rha hai")
                 print("Username not found.")
+            continue
+
+        if STATE == UNLOCKED :
+            print("----- YOUR BALANCE ------")
+            print(LOGGED_USER.balance)
+
+            print("---------- MENU OPTIONS ----------")
+            print("(1) Withdraw")
+            print("(2) Deposit")
+            print("(3) Logout")
+
+            option = int(input())
+            if option == 1 :
+                STATE = WITHDRAW
+            elif option == 2 :
+                STATE = DEPOSIT
+            elif option == 3 :
+                logout()
+                STATE = LOCKED
+
+            continue
+
+        if STATE == WITHDRAW :
+            amount = int(input("Enter amount : "))
+            withdraw_status = withdraw_amount(amount)
+
+            if not withdraw_status :
+                print("Bhai kya kar raha hai")
+                print("You do not have that much money. Try again.")
+            else :
+                print(f"Your balance : {LOGGED_USER.balance}")
+                STATE = UNLOCKED
+
+            continue
+
+        if STATE == DEPOSIT :
+            amount = int(input("Enter amount : "))
+            deposit_amount(amount)
+
+            print(f"Your balance : {LOGGED_USER.balance}")
+            STATE = UNLOCKED
             continue
