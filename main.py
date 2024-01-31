@@ -1,22 +1,7 @@
-'''
-Railway Reservation System:
- - Functionality
-   - User can book tickets
-   - Food reservation
-   - View train position in real time
-   - Choose seats
-   - Crdentials for booking ticket
-   - Train positions updated in real time
-'''
-
-import json
-
-class Train:
-    current_location = None
-    destination = None
-    
-
-class JSONHandler:
-    ...
-
-
+# -*- compile-command: "py main.py"; -*-
+from colorama import Fore, Back, Style
+print(Fore.RED + 'some red text')
+print(Back.GREEN + 'and with a green background')
+print(Style.DIM + 'and in dim text')
+print(Style.RESET_ALL)
+print('back to normal now')
