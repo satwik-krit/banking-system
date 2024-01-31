@@ -22,3 +22,6 @@
 	- Store initial amount and last access time
 	- Withdraw amount
 	- Close deposit
+
+4. Admin
+	- Can see everything,
