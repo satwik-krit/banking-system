@@ -1,0 +1,24 @@
+1. Bank account
+	- Register
+		- Username and password
+		- Store in a dict
+	- Login
+		- Match password given in dict
+		
+2. After logging in
+	- Menu
+		- Options
+			- Withdraw
+			- Deposit
+			- View balance
+			- Open fixed deposit
+		
+		- Store balance with username
+		- Display FDs
+		- Display balance
+		
+3. Fixed deposit
+	- Store with username
+	- Store initial amount and last access time
+	- Withdraw amount
+	- Close deposit
