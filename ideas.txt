@@ -37,3 +37,5 @@ ACCOUNT - username, balance, created date
 FIXEDDEPO - fdID, fdName, userID, principal, created, interest, time period, matured
 TRANSACTIONS - transID, payerID, receiverID, date, amount, comment
 UPDATES - username, text, date
+
+IMP : When deleting user, set them as inactive and delete account and fixeddepo recs explicitly.
