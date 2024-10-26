@@ -38,4 +38,4 @@ FIXEDDEPO - fdID, fdName, userID, principal, created, interest, time period, mat
 TRANSACTIONS - transID, payerID, receiverID, date, amount, comment
 UPDATES - username, text, date
 
-IMP : When deleting user, set them as inactive and delete account and fixeddepo recs explicitly.
+IMP : When deleting user, set them as inactive and delete account, fixeddepo, updates recs explicitly.
