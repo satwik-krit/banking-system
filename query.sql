@@ -20,6 +20,7 @@ CREATE TABLE Account (
 
 CREATE TABLE FixedDepo (
     fdID INT AUTO INCREMENT,
+    fdName VARCHAR(100) DEFAULT 'Fixed Deposit',
     username VARCHAR(50) NOT NULL UNIQUE,
     principal INT NOT NULL CHECK(principal > 0),
     interest INT NOT NULL CHECK(interest > 0),
