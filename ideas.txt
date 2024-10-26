@@ -36,4 +36,4 @@ USERS - pwd, username, userid
 ACCOUNT - userid, balance, created date
 FIXEDDEPO - fdid, userid, principal, created, interest, time period, matured
 TRANSACTIONS - transID, payerID, receiverID, date, amount, comment
-UPDATES - userid, blob of text, date
+UPDATES - userID, blob of text, date

@@ -1,7 +1,4 @@
-CUR_STATE = list()
-
-class State:
-    pass
+currentState = None
 
 class LockedState:
     def __init__(self):
@@ -11,155 +8,206 @@ class LockedState:
         print("Enter username and password to view details or create a new account")
         print("(1) Login")
         print("(2) Create an account")
-        inp = int(input("(Command Number) -> "))
 
-        if inp == 1:
-            CUR_STATE.append(LoginState())
+        option = int(input("(Option) -> "))
 
-        elif inp == 2:
-            CUR_STATE.append(CreateAccountState())
-        continue
+        if option == 1:
+            currentState = LoginState()
+
+        elif option == 2:
+            currentState = CreateAccountState()
 
 class LoginState:
     def __init__(self):
-        self.LOGIN_SUCCESS = 0
-        self.LOGIN_PASSWORD_INCORRECT = 1
-        self.LOGIN_USER_NOTFOUND = 2
+        self._LOGIN_SUCCESS = 0
+        self._LOGIN_PASSWORD_INCORRECT = 1
+        self._LOGIN_USER_NOTFOUND = 2
+
+    def _login(username : str, password : str) -> int:
+        # Sql stuff
+        return None #return login status enum
 
     def process(self):
         username = input("(Enter Username) -> ")
         password = input("(Enter Password) -> ")
 
-        login_status, user = login(username, password)
+        loginStatus = self._login(username, password)
 
-        if login_status == LOGIN_SUCCESS:
-            STATE = UNLOCKED
-            LOGGED_USER = user
-        elif login_status == LOGIN_PASSWORD_INCORRECT:
+        if loginStatus == self._LOGIN_SUCCESS:
+            currentState = UnlockedState(username)
+
+        elif loginStatus == self._LOGIN_PASSWORD_INCORRECT:
             print("Bhai kya kar rha hai")
             print("Incorrect Password.")
-            STATE = LOCKED
-        elif login_status == LOGIN_USER_NOTFOUND:
+            currentState = LockedState()
+
+        elif loginStatus == self._LOGIN_USER_NOTFOUND:
             print("Bhai kya kar rha hai")
             print("Username not found.")
-            STATE = LOCKED
-        continue
+            currentState = LockedState()
 
 class CreateAccountState:
     def __init__(self):
-        pass
+        self._CREATE_USER_SUCCESS = 0
+        self._CREATE_USER_FAILURE = 1
     
+    def _createNewUser(self, username : str, password : str) -> int:
+        # Sql stuff
+        return None # return creation status enum
+
     def process(self):
         username = input("(Enter NEW Username) -> ")
         password = input("(Enter NEW Password) -> ")
-        creation_status = create_new_user(username, password)
-        if creation_status:
-            _, user = login(username, password)
-            STATE = UNLOCKED
-            LOGGED_USER = user
-        else:
+        creationStatus = self._createNewUser(username, password)
+
+        if creationStatus == self._CREATE_USER_SUCCESS:
+            currentState = UnlockedState(username)
+
+        elif creationStatus == self._CREATE_USER_FAILURE:
             print("Bhai kya kar rha hai")
             print("A user already exists with this username. Choose anther one.")
-        continue
 
 class UnlockedState:
-    def __init__(self):
-        pass
+    def __init__(self, username : str):
+        self._username = username
 
     def process(self):
-        print(f"BALANCE: {LOGGED_USER.balance}")
+        # print balance with sql
+        # print and remove updates
 
-        print("MENU OPTIONS")
         print("(0) Logout")
-        print("(1) Withdraw")
+        print("(1) Pay")
         print("(2) Deposit")
         print("(3) Create a fixed deposit")
         print("(4) Modify/View fixed deposits")
 
-        option = int(input("(Command) -> "))
-        if option == 1 :
-            STATE = WITHDRAW
-        elif option == 2 :
-            STATE = DEPOSIT
-        elif option == 3 :
-            STATE = CREATE_FD
+        option = int(input("(Option) -> "))
+
+        if option == 1:
+            currentState = PayState(self._username)
+
+        elif option == 2:
+            currentState = DepositState(self._username)
+
+        elif option == 3:
+            currentState = CreateFDState(self._username)
+
         elif option == 0:
-            logout()
-            STATE = LOCKED
+            currentState = LockedState()
+
         elif option == 4:
-            STATE = MODIFY_FD
+            currentState = ViewFDState(self._username)
 
-        continue
+class PayState:
+    def __init__(self, username : str):
+        self._username = username
 
-class WithdrawState:
-    def __init__(self):
-        pass
+        self._PAYMENT_SUCCESS = 0
+        self._PAYMENT_NO_RECEIVER = 1
+        self._PAYMENT_NO_BALANCE = 2
+        self._PAYMENT_CANT_PAY_SELF = 3
+
+    def _pay(self, receiverName : str, amount : float) -> int:
+        # sql stuff
+        return None # return payment status
 
     def process(self):
-        amount = int(input("(Enter amount to withdraw) -> "))
-        withdraw_status = withdraw_amount(amount)
+        print("(0) Pay to another user")
+        print("(1) Return")
 
-        if not withdraw_status :
-            print("Bhai kya kar raha hai")
-            print("You do not have that much money. Try again.")
-        else :
-            print(f"Your balance : {LOGGED_USER.balance}")
+        option = int(input("(Option) -> "))
 
-        STATE = UNLOCKED
-        continue
+        if option == 0:
+            receiverName = input("(Enter username of receiver) -> ")
+            amount = int(input("(Enter amount to pay) -> "))
+            paymentStatus = self._pay(receiverName, amount)
+
+            if paymentStatus == self._PAYMENT_SUCCESS:
+                print("Transaction made successfully")
+
+            elif paymentStatus == self._PAYMENT_NO_BALANCE:
+                print("You don't have enough balance to make this payment.")
+
+            elif paymentStatus == self._PAYMENT_NO_RECEIVER:
+                print("This receiver does not exist.")
+
+            elif paymentStatus == self._PAYMENT_CANT_PAY_SELF:
+                print("You cannot pay to yourself.")
+
+        elif option == 1:
+            currentState = UnlockedState(self._username)
 
 class DepositState:
-    def __init__(self):
+    def __init__(self, username : str):
+        self._username = username
+
+    def _deposit(self, amount : int) -> None:
+        # sql stuff
         pass
 
     def process(self):
-        amount = int(input("(Enter amount to deposit) -> "))
-        deposit_amount(amount)
+        amount = int(input("(Enter amount to deposit (cash to digital money)) -> "))
+        self._deposit(amount)
 
-        print(f"Your balance : {LOGGED_USER.balance}")
-        STATE = UNLOCKED
-        continue
+        currentState = UnlockedState(self._username)
 
 class CreateFDState:
-    def __init__(self):
+    def __init__(self, username : str):
+        self._username = username
+
+        self._CREATE_FD_SUCCESS = 0
+        self._CREATE_FD_FAILURE = 1
+
+    def _createFD(self, amount : int) -> int:
+        # sql stuff
         pass
 
     def process(self):
-        amount = int(input("(Enter amount to deposit) -> "))
-        fd_status = create_fd(amount)
-        if fd_status:
-            print("Fixed deposit created successfuly.")
-        else:
-            print("Bhai kya kar raha hai")
-            print("Insufficient balance.")
-        STATE = UNLOCKED
-        continue
+        print("(0) Create new FD")
+        print("(1) Return")
 
-class WithdrawFDState:
-    def __init__(self):
-        pass
+        option = int(input("(Option) -> "))
+
+        if option == 0:
+            amount = int(input("(Enter FD principal amount) -> "))
+            createFDStatus = self._createFD(amount)
+
+            if createFDStatus == self._CREATE_FD_SUCCESS:
+                print("Fixed deposit created successfuly.")
+
+            elif createFDStatus == self._CREATE_FD_FAILURE:
+                print("Bhai kya kar raha hai")
+                print("Insufficient balance.")
+
+        elif option == 1:
+            currentState = UnlockedState(self._username)
+
+class ViewFDState:
+    def __init__(self, username : str):
+        self._username = username
     
     def process(self):
-        print("------------------------")
-        print("FIXED DEPOSITS")
-        print("------------------------")
-        for index, fd in enumerate(LOGGED_USER.fixed_deposits):
-            print(f"Index: {index+1}")
-            print(fd)
-            print("------------------------")
+        # display FDs
 
-        print("OPTIONS")
-        print("(0) Go back")
-        print("(1) Withdraw fixed deposit")
-        _input = int(input("(Command) -> "))
+        print("(0) View another FD")
+        print("(1) Withdraw an FD")
+        print("(2) Return")
 
-        if _input == 0:
-            STATE = UNLOCKED
-        elif _input == 1:
-            index = int(input("(Index of FD to withdraw) -> "))
-            withdraw_fd(index-1)
+        option = int(input("(Option) -> "))
+
+        if option == 0:
+            # sql stuff
+            pass
+
+        elif option == 1:
+            # sql stuff
+            pass
+
+        elif option == 2:
+            currentState = UnlockedState(self._username)
 
 if __name__ == '__main__':
+    currentState = LockedState()
 
-
-
+    while True:
+        currentState.process()
