@@ -25,3 +25,13 @@
 
 4. Admin
 	- Can see everything,
+
+
+===========================
+1. Change state arch
+2. MySQL support
+3. Colored output (if time)
+
+USERS - pwd, username, userid
+ACCOUNT -userid, balance, created date, fdi ids
+FIXEDDEPO - fdid, userid, principal, created, interest, time period, matured
