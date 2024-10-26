@@ -33,5 +33,7 @@
 3. Colored output (if time)
 
 USERS - pwd, username
-ACCOUNT - username, balance, created date, fdi ids
-FIXEDDEPO - fdid, username, principal, created, interest, time period, matured
+ACCOUNT - username, balance, created date
+FIXEDDEPO - fdID, userID, principal, created, interest, time period, matured
+TRANSACTIONS - transID, payerID, receiverID, date, amount, comment
+UPDATES - username, text, date
