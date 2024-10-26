@@ -32,6 +32,6 @@
 2. MySQL support
 3. Colored output (if time)
 
-USERS - pwd, username, userid
-ACCOUNT -userid, balance, created date, fdi ids
-FIXEDDEPO - fdid, userid, principal, created, interest, time period, matured
+USERS - pwd, username
+ACCOUNT - username, balance, created date, fdi ids
+FIXEDDEPO - fdid, username, principal, created, interest, time period, matured
