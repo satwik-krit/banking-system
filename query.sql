@@ -1,22 +1,26 @@
 DROP TABLE IF EXISTS users;
 CREATE TABLE Users (
     password VARCHAR(10) NOT NULL,
-    username VARCHAR(50) NOT NULL UNIQUE,
+    username VARCHAR(50),
     firstname VARCHAR(50) NOT NULL,
     lastname VARCHAR(50) NOT NULL,
-    age INT NOT NULL CHECK (age > 0),
+    age INT NOT NULL,
     phone VARCHAR(15) NOT NULL,
     inactive TINYINT(1) NOT NULL DEFAULT 0,
-    PRIMARY KEY(username)
+
+    PRIMARY KEY(username),
+    CHECK(age > 0)
 );
 
 DROP TABLE IF EXISTS Account;
 CREATE TABLE Account (
-    balance INT NOT NULL CHECK (balance >= 0),
+    balance INT NOT NULL,
     created DATE NOT NULL,
     frozen TINYINT(1) NOT NULL DEFAULT 0,
-    username VARCHAR(50) NOT NULL UNIQUE,
+    username VARCHAR(50),
+
     PRIMARY KEY(username),
+    CHECK(balance >= 0),
     FOREIGN KEY(username) REFERENCES Users(username)
     ON DELETE CASCADE
     ON UPDATE CASCADE
@@ -24,14 +28,20 @@ CREATE TABLE Account (
 
 DROP TABLE IF EXISTS FixedDepo;
 CREATE TABLE FixedDepo (
-    fdID INT AUTO_INCREMENT,
-    fdName VARCHAR(30) DEFAULT 'Fixed Deposit',
-    username VARCHAR(50) NOT NULL UNIQUE,
-    principal INT NOT NULL CHECK(principal > 0),
-    interest INT NOT NULL CHECK(interest > 0),
+    fdName VARCHAR(30),
+    username VARCHAR(50),
+    principal INT NOT NULL,
+    interest INT NOT NULL,
+    creationdate DATE NOT NULL,
+    timeperiod INT NOT NULL,
     maturedate DATE NOT NULL,
     matured TINYINT(1) NOT NULL DEFAULT 0,
-    PRIMARY KEY(fdID),
+
+    PRIMARY KEY(fdName, username),
+    CHECK(principal > 0),
+    CHECK(interest > 0),
+    CHECK(timeperiod BETWEEN 0 AND 10)
+    CHECK(maturedate = DATE_ADD(creationdate, INTERVAL timeperiod YEAR)),
     FOREIGN KEY(username) REFERENCES Users(username)
     ON DELETE CASCADE
     ON UPDATE CASCADE
@@ -40,12 +50,14 @@ CREATE TABLE FixedDepo (
 DROP TABLE IF EXISTS Transactions;
 CREATE TABLE Transactions (
     transID INT AUTO_INCREMENT,
-    payerID VARCHAR(50) NOT NULL UNIQUE,
-    receiverID VARCHAR(50) NOT NULL UNIQUE,
-    transDate DATE,
-    amount INT NOT NULL CHECK(amount > 0),
+    payerID VARCHAR(50) NOT NULL,
+    receiverID VARCHAR(50) NOT NULL,
+    transDate DATE NOT NULL,
+    amount INT NOT NULL,
     comment TINYTEXT,
+
     PRIMARY KEY(transID),
+    CHECK(amount > 0),
     FOREIGN KEY(payerID) REFERENCES Users(username)
     ON DELETE RESTRICT
     ON UPDATE CASCADE,
@@ -59,5 +71,6 @@ CREATE TABLE Updates (
     username VARCHAR(50) NOT NULL,
     content TINYTEXT NOT NULL,
     updateDate DATE,
+
     FOREIGN KEY(username) REFERENCES Users(username)
 );

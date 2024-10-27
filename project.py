@@ -2,6 +2,7 @@
 # set makeprg=py\ project.py
 # __vimendthis__
 from datetime import date
+from dateutil.relativedelta import relativedelta
 import mysql.connector as sqlconn
 
 currentState = None
@@ -33,29 +34,23 @@ PAY_USER = (("UPDATE account "
              "SET balance = balance - {1} "
              "WHERE username = '{0}'; "),
             ("INSERT INTO transactions "
-            "(payerID, receiverID, transDate, amount, comment) "
-            "VALUES "
-            "('{}', '{}', '{}', {}, '{}'); "),
+             "(payerID, receiverID, transDate, amount, comment) "
+             "VALUES "
+             "('{}', '{}', '{}', {}, '{}'); "),
             ("UPDATE account "
-            "SET balance = balance + {1} "
-            "WHERE username = '{0}'; "))
+             "SET balance = balance + {1} "
+             "WHERE username = '{0}'; "))
 
 DEPOSIT = ("UPDATE account "
            "SET balance = balance + {1} "
            "WHERE username = '{0}'; ")
 
-# PAY_USER = ("UPDATE account "
-#             "SET balance = balance - {2} "
-#             "WHERE username = '{0}' "
-#             ";"
-#             "INSERT INTO transactions "
-#             "(payerID, receiverID, transDate, amount, comment) "
-#             "VALUES "
-#             "('{0}', '{1}', '{3}', {2}, '{4}') "
-#             ";"
-#             "UPDATE account "
-#             "SET balance = balance + {2};"
-#             "WHERE username = '{1}' ;")
+CREATE_FD = ("INSERT INTO FixedDepo "
+             "(fdName, username, principal, interest, creationdate, timeperiod, maturedate) "
+             "VALUES('{}', '{}', {}, {}, '{}', {}, '{}'); ")
+
+CHECK_FD_EXISTS = ("SELECT * FROM FixedDepo "
+                   "WHERE username = '{}' AND fdName = '{}'; ")
 
 def execute(query : str, args : tuple):
     crsr.execute(query.format(*args))
@@ -135,14 +130,7 @@ class LoginState:
 
 class CreateAccountState:
     def __init__(self):
-        self._CREATE_USER_SUCCESS = 0
-        self._CREATE_USER_FAILURE = 1
-
-    def _checkUsernameUnique(self, username : str) -> int:
-        if checkUserExists(username):
-            return self._CREATE_USER_FAILURE
-        else:
-            return self._CREATE_USER_SUCCESS
+        pass
     
     def _createNewUser(self, username : str, password : str, firstname : str, 
                        lastname : str, age : int, phone : int) -> int:
@@ -157,7 +145,7 @@ class CreateAccountState:
 
         uniqueStatus = self._checkUsernameUnique(username)
 
-        if uniqueStatus == self._CREATE_USER_FAILURE:
+        if checkUserExists(username):
             print()
             print("Username not unique.")
             return
@@ -296,28 +284,49 @@ class CreateFDState:
         self._CREATE_FD_SUCCESS = 0
         self._CREATE_FD_FAILURE = 1
 
-    def _createFD(self, amount : int) -> int:
-        # sql stuff
-        pass
+    def _checkFDExists(self, name : str) -> bool:
+        execute(CHECK_FD_EXISTS, (self._username, name))
+
+        if len(crsr.fetchall()) != 0:
+            return True
+        else:
+            return False
+
+    def _createFD(self, name : str, amount : int, period : int) -> int:
+        execute(CREATE_FD, (name, self._username, amount, 2, str(date.today()), period, 
+                date.today() + relativedelta(years=period)))
+        
+        # complete this
 
     def process(self):
         global currentState
 
+        print("======================")
         print("(0) Create new FD")
         print("(1) Return")
+        print()
 
         option = int(input("(Option) -> "))
 
         if option == 0:
-            amount = int(input("(Enter FD principal amount) -> "))
-            createFDStatus = self._createFD(amount)
+            print()
+            name = input("(Enter FD name) -> ")
+            
+            if self._checkFDExists(name):
+                print()
+                print("Fixed deposit with this name already exists.")
 
-            if createFDStatus == self._CREATE_FD_SUCCESS:
-                print("Fixed deposit created successfuly.")
+            else:
+                amount = int(input("(Enter amount) -> "))
+                period = int(input("(Enter time period in years (under 10)) -> "))
 
-            elif createFDStatus == self._CREATE_FD_FAILURE:
-                print("Bhai kya kar raha hai")
-                print("Insufficient balance.")
+                createFDStatus = self._createFD(name, amount, period)
+
+                if createFDStatus == self._CREATE_FD_SUCCESS:
+                    print("Fixed deposit created successfully.")
+
+                elif createFDStatus == self._CREATE_FD_FAILURE:
+                    print("Insufficient balance.")
 
         elif option == 1:
             currentState = UnlockedState(self._username)
@@ -347,10 +356,6 @@ class ViewFDState:
 
         elif option == 2:
             currentState = UnlockedState(self._username)
-
-class Clock:
-    def __init__(self):
-        pass
 
 if __name__ == '__main__':
     currentState = LockedState()
