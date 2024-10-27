@@ -1,4 +1,12 @@
+# __vimdothis__
+
+# __vimendthis
+from typing import TypeAlias, Any
+import mysql.connector as sqlconn
 currentState = None
+
+db = sqlconn.connect(host="localhost", user="root", password="root", database="t")
+crsr = db.cursor()
 
 class LockedState:
     def __init__(self):
@@ -18,10 +26,12 @@ class LockedState:
             currentState = CreateAccountState()
 
 class LoginState:
+    _LOGIN_SUCCESS = 0
+    _LOGIN_PASSWORD_INCORRECT = 1
+    _LOGIN_USER_NOTFOUND = 2
+
     def __init__(self):
-        self._LOGIN_SUCCESS = 0
-        self._LOGIN_PASSWORD_INCORRECT = 1
-        self._LOGIN_USER_NOTFOUND = 2
+        pass
 
     def _login(username : str, password : str) -> int:
         # Sql stuff
@@ -205,6 +215,10 @@ class ViewFDState:
 
         elif option == 2:
             currentState = UnlockedState(self._username)
+
+class Clock:
+    def __init__(self):
+        pass
 
 if __name__ == '__main__':
     currentState = LockedState()
