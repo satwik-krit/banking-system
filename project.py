@@ -5,13 +5,22 @@ import mysql.connector as sqlconn
 
 currentState = None
 
-db = sqlconn.connect(host="localhost", user="root", password="root", database="t")
-crsr = db.cursor()
+db = sqlconn.connect(host="localhost", user="root", password="nandan99rd", database="nandan")
+crsr = db.cursor(buffered=True)
 
 # QUERIES
-CHECK_USER = ("SELECT username, password "
+LOGIN_USER = ("SELECT username, password "
               "FROM Users "
               "WHERE username = '{}';")
+
+CHECK_USERNAME = ("SELECT username FROM Users WHERE username = '{}';")
+
+INSERT_USER = ("INSERT INTO Users VALUES "
+               "('{}', '{}', '{}', '{}', {}, '{}', {});")
+
+def execute(query : str, args : tuple):
+    crsr.execute(query.format(*args))
+    db.commit()
 
 class LockedState:
     def __init__(self):
@@ -41,7 +50,7 @@ class LoginState:
         pass
 
     def _login(self, username : str, password : str) -> int:
-        crsr.execute(CHECK_USER.format(username))
+        execute(LOGIN_USER, (username,))
         record = crsr.fetchone()
 
         if record == None:
@@ -76,24 +85,37 @@ class CreateAccountState:
     def __init__(self):
         self._CREATE_USER_SUCCESS = 0
         self._CREATE_USER_FAILURE = 1
+
+    def _checkUsernameUnique(self, username : str) -> int:
+        execute(CHECK_USERNAME, (username,))
+        if len(crsr.fetchall()) != 0:
+            return self._CREATE_USER_FAILURE
+        else:
+            return self._CREATE_USER_SUCCESS
     
-    def _createNewUser(self, username : str, password : str) -> int:
-        # Sql stuff
-        return None # return creation status enum
+    def _createNewUser(self, username : str, password : str, firstname : str, 
+                       lastname : str, age : int, phone : int) -> int:
+        execute(INSERT_USER, (password, username, firstname, lastname, age, phone, 0))
 
     def process(self):
         global currentState
 
         username = input("(Enter NEW Username) -> ")
+        uniqueStatus = self._checkUsernameUnique(username)
+
+        if uniqueStatus == self._CREATE_USER_FAILURE:
+            print("Username not unique.")
+            return
+
         password = input("(Enter NEW Password) -> ")
-        creationStatus = self._createNewUser(username, password)
+        firstname = input("(Enter first name) -> ")
+        lastname = input("(Enter last name) -> ")
+        age = int(input("(Enter age) -> "))
+        phone = int(input("(Enter phone no.) -> "))
 
-        if creationStatus == self._CREATE_USER_SUCCESS:
-            currentState = UnlockedState(username)
+        self._createNewUser(username, password, firstname, lastname, age, phone)
 
-        elif creationStatus == self._CREATE_USER_FAILURE:
-            print("Bhai kya kar rha hai")
-            print("A user already exists with this username. Choose anther one.")
+        currentState = UnlockedState(username)
 
 class UnlockedState:
     def __init__(self, username : str):
