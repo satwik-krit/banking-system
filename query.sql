@@ -1,4 +1,4 @@
--- DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS users;
 CREATE TABLE Users (
     password VARCHAR(10) NOT NULL,
     username VARCHAR(50) NOT NULL UNIQUE,
@@ -10,8 +10,7 @@ CREATE TABLE Users (
     PRIMARY KEY(username)
 );
 
-
--- DROP TABLE IF EXISTS Account;
+DROP TABLE IF EXISTS Account;
 CREATE TABLE Account (
     balance INT NOT NULL CHECK (balance >= 0),
     created DATE NOT NULL,
@@ -23,7 +22,7 @@ CREATE TABLE Account (
     ON UPDATE CASCADE
 );
 
--- DROP TABLE IF EXISTS FixedDepo;
+DROP TABLE IF EXISTS FixedDepo;
 CREATE TABLE FixedDepo (
     fdID INT AUTO_INCREMENT,
     fdName VARCHAR(30) DEFAULT 'Fixed Deposit',
@@ -38,11 +37,11 @@ CREATE TABLE FixedDepo (
     ON UPDATE CASCADE
 );
 
--- DROP TABLE Transactions;
+DROP TABLE IF EXISTS Transactions;
 CREATE TABLE Transactions (
     transID INT AUTO_INCREMENT,
     payerID VARCHAR(50) NOT NULL UNIQUE,
-    receieverID VARCHAR(50) NOT NULL UNIQUE,
+    receiverID VARCHAR(50) NOT NULL UNIQUE,
     transDate DATE,
     amount INT NOT NULL CHECK(amount > 0),
     comment TINYTEXT,
@@ -55,7 +54,7 @@ CREATE TABLE Transactions (
     ON UPDATE CASCADE
 );
 
--- DROP TABLE Updates;
+DROP TABLE IF EXISTS Updates;
 CREATE TABLE Updates (
     username VARCHAR(50) NOT NULL,
     content TINYTEXT NOT NULL,

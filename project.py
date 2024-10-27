@@ -6,7 +6,7 @@ import mysql.connector as sqlconn
 
 currentState = None
 
-db = sqlconn.connect(host="localhost", user="root", password="root", database="t")
+db = sqlconn.connect(host="localhost", user="root", password="nandan99rd", database="nandan")
 crsr = db.cursor(buffered=True)
 
 # QUERIES
@@ -29,17 +29,20 @@ GET_BALANCE = ("SELECT balance "
                "FROM account "
                "WHERE username = '{}';")
 
-
 PAY_USER = (("UPDATE account "
-                "SET balance = balance - {2} "
-                "WHERE username = '{0}'; "),
+             "SET balance = balance - {1} "
+             "WHERE username = '{0}'; "),
             ("INSERT INTO transactions "
             "(payerID, receiverID, transDate, amount, comment) "
             "VALUES "
-            "('{0}', '{1}', '{3}', {2}, '{4}'); "),
+            "('{}', '{}', '{}', {}, '{}'); "),
             ("UPDATE account "
-            "SET balance = balance + {2} "
-            "WHERE username = '{1}';"))
+            "SET balance = balance + {1} "
+            "WHERE username = '{0}'; "))
+
+DEPOSIT = ("UPDATE account "
+           "SET balance = balance + {1} "
+           "WHERE username = '{0}'; ")
 
 # PAY_USER = ("UPDATE account "
 #             "SET balance = balance - {2} "
@@ -58,11 +61,11 @@ def execute(query : str, args : tuple):
     crsr.execute(query.format(*args))
     db.commit()
 
-def getBalance(username):
+def getBalance(username : str) -> int:
     execute(GET_BALANCE, (username,))
     return crsr.fetchone()[0]
 
-def checkUserExists(username):
+def checkUserExists(username : str) -> bool:
     execute(CHECK_USERNAME, (username,))
     if len(crsr.fetchall()) != 0:
         return True
@@ -76,11 +79,13 @@ class LockedState:
     def process(self):
         global currentState
 
+        print("======================================================================")
         print("Enter username and password to view details or create a new account")
         print("(1) Login")
         print("(2) Create an account")
+        print()
 
-        option = int(input("(Option) -> "))
+        option = int(input("(Option) -> ").strip())
 
         if option == 1:
             currentState = LoginState()
@@ -110,21 +115,21 @@ class LoginState:
     def process(self):
         global currentState
 
-        username = input("(Enter Username) -> ")
-        password = input("(Enter Password) -> ")
-
+        print("=======================================")
+        username = input("(Enter Username) -> ").strip()
+        password = input("(Enter Password) -> ").strip()
         loginStatus = self._login(username, password)
 
         if loginStatus == self._LOGIN_SUCCESS:
             currentState = UnlockedState(username)
 
         elif loginStatus == self._LOGIN_PASSWORD_INCORRECT:
-            print("Bhai kya kar rha hai")
+            print()
             print("Incorrect Password.")
             currentState = LockedState()
 
         elif loginStatus == self._LOGIN_USER_NOTFOUND:
-            print("Bhai kya kar rha hai")
+            print()
             print("Username not found.")
             currentState = LockedState()
 
@@ -147,18 +152,22 @@ class CreateAccountState:
     def process(self):
         global currentState
 
-        username = input("(Enter NEW Username) -> ")
+        print("========================================")
+        username = input("(Enter NEW Username) -> ").strip()
+
         uniqueStatus = self._checkUsernameUnique(username)
 
         if uniqueStatus == self._CREATE_USER_FAILURE:
+            print()
             print("Username not unique.")
             return
 
-        password = input("(Enter NEW Password) -> ")
-        firstname = input("(Enter first name) -> ")
-        lastname = input("(Enter last name) -> ")
-        age = int(input("(Enter age) -> "))
-        phone = int(input("(Enter phone no.) -> "))
+        password = input("(Enter NEW Password) -> ").strip()
+        firstname = input("(Enter first name) -> ").strip()
+        lastname = input("(Enter last name) -> ").strip()
+        age = int(input("(Enter age) -> ").strip())
+        phone = int(input("(Enter phone no.) -> ").strip())
+        print()
 
         self._createNewUser(username, password, firstname, lastname, age, phone)
 
@@ -174,14 +183,16 @@ class UnlockedState:
         # print and remove updates
         balance = getBalance(self._username)
 
+        print("===================================")
         print(f"BALANCE: {balance}")
         print("(0) Logout")
         print("(1) Pay")
         print("(2) Deposit")
         print("(3) Create a fixed deposit")
         print("(4) Modify/View fixed deposits")
+        print()
 
-        option = int(input("(Option) -> "))
+        option = int(input("(Option) -> ").strip())
 
         if option == 1:
             currentState = PayState(self._username)
@@ -209,6 +220,7 @@ class PayState:
 
     def _pay(self, receiverName : str, amount : float, comment: str) -> int:
         balance = getBalance(self._username)
+
         if amount > balance:
             return self._PAYMENT_INSUFFICIENT_BALANCE
 
@@ -219,23 +231,27 @@ class PayState:
             return self._PAYMENT_CANT_PAY_SELF
 
         else:
-            crsr.fetchall()
-            for i in range(3)
-            execute(PAY_USER[i], (self._username, receiverName, amount, str(date.today()), comment)) 
+            execute(PAY_USER[0], (self._username, amount))
+            execute(PAY_USER[1], (self._username, receiverName, str(date.today()), amount, comment))
+            execute(PAY_USER[2], (receiverName, amount))
+
             return self._PAYMENT_SUCCESS 
 
     def process(self):
         global currentState
 
+        print("===========================")
         print("(0) Pay to another user")
         print("(1) Abort")
+        print()
 
-        option = int(input("(Option) -> "))
+        option = int(input("(Option) -> ").strip())
+        print()
 
         if option == 0:
-            receiverName = input("(Enter username of receiver) -> ")
-            amount = int(input("(Enter amount to pay) -> "))
-            comment = input("Enter comment (optional)) -> ")
+            receiverName = input("(Enter username of receiver) -> ").strip()
+            amount = int(input("(Enter amount to pay) -> ").strip())
+            comment =  input("Enter comment (optional)) -> ").strip()
 
             if not comment:
                 comment = "No comment"
@@ -262,12 +278,12 @@ class DepositState:
         self._username = username
 
     def _deposit(self, amount : int) -> None:
-        # sql stuff
-        pass
+        execute(DEPOSIT, (self._username, amount))
 
     def process(self):
         global currentState
 
+        print("======================================================================")
         amount = int(input("(Enter amount to deposit (cash to digital money)) -> "))
         self._deposit(amount)
 
