@@ -13,6 +13,8 @@ class LockedState:
         pass
 
     def process(self):
+        global currentState
+
         print("Enter username and password to view details or create a new account")
         print("(1) Login")
         print("(2) Create an account")
@@ -38,6 +40,8 @@ class LoginState:
         return None #return login status enum
 
     def process(self):
+        global currentState
+
         username = input("(Enter Username) -> ")
         password = input("(Enter Password) -> ")
 
@@ -66,6 +70,8 @@ class CreateAccountState:
         return None # return creation status enum
 
     def process(self):
+        global currentState
+
         username = input("(Enter NEW Username) -> ")
         password = input("(Enter NEW Password) -> ")
         creationStatus = self._createNewUser(username, password)
@@ -82,6 +88,8 @@ class UnlockedState:
         self._username = username
 
     def process(self):
+        global currentState
+
         # print balance with sql
         # print and remove updates
 
@@ -122,6 +130,8 @@ class PayState:
         return None # return payment status
 
     def process(self):
+        global currentState
+
         print("(0) Pay to another user")
         print("(1) Return")
 
@@ -156,6 +166,8 @@ class DepositState:
         pass
 
     def process(self):
+        global currentState
+
         amount = int(input("(Enter amount to deposit (cash to digital money)) -> "))
         self._deposit(amount)
 
@@ -173,6 +185,8 @@ class CreateFDState:
         pass
 
     def process(self):
+        global currentState
+
         print("(0) Create new FD")
         print("(1) Return")
 
@@ -197,6 +211,8 @@ class ViewFDState:
         self._username = username
     
     def process(self):
+        global currentState
+
         # display FDs
 
         print("(0) View another FD")
