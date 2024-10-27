@@ -1,12 +1,17 @@
 # __vimdothis__
-
-# __vimendthis
-from typing import TypeAlias, Any
+# set makeprg=py\ project.py
+# __vimendthis__
 import mysql.connector as sqlconn
+
 currentState = None
 
 db = sqlconn.connect(host="localhost", user="root", password="root", database="t")
 crsr = db.cursor()
+
+# QUERIES
+CHECK_USER = ("SELECT username, password "
+              "FROM Users "
+              "WHERE username = '{}';")
 
 class LockedState:
     def __init__(self):
@@ -35,9 +40,16 @@ class LoginState:
     def __init__(self):
         pass
 
-    def _login(username : str, password : str) -> int:
-        # Sql stuff
-        return None #return login status enum
+    def _login(self, username : str, password : str) -> int:
+        crsr.execute(CHECK_USER.format(username))
+        record = crsr.fetchone()
+
+        if record == None:
+            return self._LOGIN_USER_NOTFOUND 
+        elif record[1] != password:
+            return self._LOGIN_PASSWORD_INCORRECT
+        else:
+            return self._LOGIN_SUCCESS
 
     def process(self):
         global currentState
