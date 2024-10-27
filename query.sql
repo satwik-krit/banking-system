@@ -13,7 +13,7 @@ CREATE TABLE Users (
 
 -- DROP TABLE IF EXISTS Account;
 CREATE TABLE Account (
-    balance INT NOT NULL CHECK (balance > 0),
+    balance INT NOT NULL CHECK (balance >= 0),
     created DATE NOT NULL,
     frozen TINYINT(1) NOT NULL DEFAULT 0,
     username VARCHAR(50) NOT NULL UNIQUE,
