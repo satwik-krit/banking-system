@@ -1,11 +1,12 @@
 # __vimdothis__
 # set makeprg=py\ project.py
 # __vimendthis__
+from datetime import date
 import mysql.connector as sqlconn
 
 currentState = None
 
-db = sqlconn.connect(host="localhost", user="root", password="nandan99rd", database="nandan")
+db = sqlconn.connect(host="localhost", user="root", password="root", database="t")
 crsr = db.cursor(buffered=True)
 
 # QUERIES
@@ -13,14 +14,60 @@ LOGIN_USER = ("SELECT username, password "
               "FROM Users "
               "WHERE username = '{}';")
 
-CHECK_USERNAME = ("SELECT username FROM Users WHERE username = '{}';")
+CHECK_USERNAME = ("SELECT username "
+                  "FROM Users "
+                  "WHERE username = '{}';")
 
 INSERT_USER = ("INSERT INTO Users VALUES "
                "('{}', '{}', '{}', '{}', {}, '{}', {});")
 
+CREATE_ACCOUNT = ("INSERT INTO account "
+                  "VALUES "
+                  "({}, '{}', {}, '{}');")
+
+GET_BALANCE = ("SELECT balance "
+               "FROM account "
+               "WHERE username = '{}';")
+
+
+PAY_USER = (("UPDATE account "
+                "SET balance = balance - {2} "
+                "WHERE username = '{0}'; "),
+            ("INSERT INTO transactions "
+            "(payerID, receiverID, transDate, amount, comment) "
+            "VALUES "
+            "('{0}', '{1}', '{3}', {2}, '{4}'); "),
+            ("UPDATE account "
+            "SET balance = balance + {2} "
+            "WHERE username = '{1}';"))
+
+# PAY_USER = ("UPDATE account "
+#             "SET balance = balance - {2} "
+#             "WHERE username = '{0}' "
+#             ";"
+#             "INSERT INTO transactions "
+#             "(payerID, receiverID, transDate, amount, comment) "
+#             "VALUES "
+#             "('{0}', '{1}', '{3}', {2}, '{4}') "
+#             ";"
+#             "UPDATE account "
+#             "SET balance = balance + {2};"
+#             "WHERE username = '{1}' ;")
+
 def execute(query : str, args : tuple):
     crsr.execute(query.format(*args))
     db.commit()
+
+def getBalance(username):
+    execute(GET_BALANCE, (username,))
+    return crsr.fetchone()[0]
+
+def checkUserExists(username):
+    execute(CHECK_USERNAME, (username,))
+    if len(crsr.fetchall()) != 0:
+        return True
+    else:
+        return False
 
 class LockedState:
     def __init__(self):
@@ -87,8 +134,7 @@ class CreateAccountState:
         self._CREATE_USER_FAILURE = 1
 
     def _checkUsernameUnique(self, username : str) -> int:
-        execute(CHECK_USERNAME, (username,))
-        if len(crsr.fetchall()) != 0:
+        if checkUserExists(username):
             return self._CREATE_USER_FAILURE
         else:
             return self._CREATE_USER_SUCCESS
@@ -96,6 +142,7 @@ class CreateAccountState:
     def _createNewUser(self, username : str, password : str, firstname : str, 
                        lastname : str, age : int, phone : int) -> int:
         execute(INSERT_USER, (password, username, firstname, lastname, age, phone, 0))
+        execute(CREATE_ACCOUNT, (0, str(date.today()), 0, username))
 
     def process(self):
         global currentState
@@ -124,9 +171,10 @@ class UnlockedState:
     def process(self):
         global currentState
 
-        # print balance with sql
         # print and remove updates
+        balance = getBalance(self._username)
 
+        print(f"BALANCE: {balance}")
         print("(0) Logout")
         print("(1) Pay")
         print("(2) Deposit")
@@ -156,30 +204,48 @@ class PayState:
 
         self._PAYMENT_SUCCESS = 0
         self._PAYMENT_NO_RECEIVER = 1
-        self._PAYMENT_NO_BALANCE = 2
+        self._PAYMENT_INSUFFICIENT_BALANCE = 2
         self._PAYMENT_CANT_PAY_SELF = 3
 
-    def _pay(self, receiverName : str, amount : float) -> int:
-        # sql stuff
-        return None # return payment status
+    def _pay(self, receiverName : str, amount : float, comment: str) -> int:
+        balance = getBalance(self._username)
+        if amount > balance:
+            return self._PAYMENT_INSUFFICIENT_BALANCE
+
+        elif not checkUserExists(receiverName):
+            return self._PAYMENT_NO_RECEIVER
+
+        elif receiverName == self._username:
+            return self._PAYMENT_CANT_PAY_SELF
+
+        else:
+            crsr.fetchall()
+            for i in range(3)
+            execute(PAY_USER[i], (self._username, receiverName, amount, str(date.today()), comment)) 
+            return self._PAYMENT_SUCCESS 
 
     def process(self):
         global currentState
 
         print("(0) Pay to another user")
-        print("(1) Return")
+        print("(1) Abort")
 
         option = int(input("(Option) -> "))
 
         if option == 0:
             receiverName = input("(Enter username of receiver) -> ")
             amount = int(input("(Enter amount to pay) -> "))
-            paymentStatus = self._pay(receiverName, amount)
+            comment = input("Enter comment (optional)) -> ")
+
+            if not comment:
+                comment = "No comment"
+
+            paymentStatus = self._pay(receiverName, amount, comment)
 
             if paymentStatus == self._PAYMENT_SUCCESS:
                 print("Transaction made successfully")
 
-            elif paymentStatus == self._PAYMENT_NO_BALANCE:
+            elif paymentStatus == self._PAYMENT_INSUFFICIENT_BALANCE:
                 print("You don't have enough balance to make this payment.")
 
             elif paymentStatus == self._PAYMENT_NO_RECEIVER:
