@@ -5,6 +5,7 @@ CREATE TABLE Users (
     firstname VARCHAR(50) NOT NULL,
     lastname VARCHAR(50) NOT NULL,
     age INT NOT NULL CHECK (age > 0),
+    phone VARCHAR(15) NOT NULL,
     inactive TINYINT(1) NOT NULL DEFAULT 0,
     PRIMARY KEY(username)
 );
@@ -14,6 +15,7 @@ CREATE TABLE Users (
 CREATE TABLE Account (
     balance INT NOT NULL CHECK (balance > 0),
     created DATE NOT NULL,
+    frozen TINYINT(1) NOT NULL DEFAULT 0,
     username VARCHAR(50) NOT NULL UNIQUE,
     PRIMARY KEY(username),
     FOREIGN KEY(username) REFERENCES Users(username)
