@@ -1,6 +1,3 @@
-# __vimdothis__
-# set makeprg=py\ project.py
-# __vimendthis__
 from datetime import *
 from dateutil.relativedelta import relativedelta
 import mysql.connector as sqlconn
@@ -9,7 +6,7 @@ try:
 
     currentState = None
 
-    db = sqlconn.connect(host="localhost", user="root", password="nandan99rd", database="nandan")
+    db = sqlconn.connect(host="localhost", user="root", password="root", database="t")
     crsr = db.cursor(buffered=True)
 
     def execute(query : str, args : tuple) -> None:
@@ -382,8 +379,8 @@ try:
             print(f"Time passed (years) : {computedDetails[0]}")
             print(f"Current value : {computedDetails[2]}")
             print(f"Mature date : {record[6]}")
-            print(f"Matured? : {"Yes" if computedDetails[1] else "No"}")
-            print(f"Widthdrawn? : {"Yes" if record[7] else "No"}")
+            print(f"Matured? : {'Yes' if computedDetails[1] else 'No'}")
+            print(f"Widthdrawn? : {'Yes' if record[7] else 'No'}")
 
         def _withdrawFD(self, fdName : str) -> None:
             if not checkFDExists(self._username, fdName):
