@@ -9,7 +9,6 @@ try:
     db = sqlconn.connect(host="localhost", user="root", password="root", database="t")
     crsr = db.cursor(buffered=True)
         
-    print(crsr.fetchone())
     def execute(query : str, args : tuple) -> None:
         crsr.execute(query.format(*args))
 
@@ -21,16 +20,16 @@ try:
 
     def getBalance(username : str) -> int:
         Q_GET_BALANCE = ("SELECT balance "
-                        "FROM account "
-                        "WHERE username = '{}';")
+                         "FROM account "
+                         "WHERE username = '{}';")
 
         execute(Q_GET_BALANCE, (username,))
         return crsr.fetchone()[0]
 
     def changeBalance(username : str, change : int) -> None:
         QC_CHANGE_BALANCE = ("UPDATE Account "
-                            "SET balance = balance + {1} "
-                            "WHERE username = '{0}'; ")
+                             "SET balance = balance + {1} "
+                             "WHERE username = '{0}'; ")
         
         execute(QC_CHANGE_BALANCE, (username, change))
         db.commit()
@@ -48,7 +47,7 @@ try:
 
     def checkFDExists(username : str, fdName : str) -> bool:
         Q_CHECK_FD_EXISTS = ("SELECT * FROM FixedDepo "
-                            "WHERE username = '{}' AND fdName = '{}'; ")
+                             "WHERE username = '{}' AND fdName = '{}'; ")
 
         execute(Q_CHECK_FD_EXISTS, (username, fdName))
 
@@ -88,13 +87,16 @@ try:
         _QC_CREATE_UPDATE = ("INSERT INTO Updates "
                              "VALUES "
                              "('{}', '{}', '{}', '{}')")
+
         execute(_QC_CREATE_UPDATE, (username, baseContent, extraContent, _date))
+
         db.commit()
 
     def getUserInfo(username):
         _Q_GET_USER = ("SELECT firstname, lastname, age, phone, inactive "
                        "FROM Users "
                        "WHERE username = '{}' ;")
+
         execute(_Q_GET_USER, (username,))
         return crsr.fetchone()
 
@@ -130,8 +132,8 @@ try:
         _LOGIN_USER_NOTFOUND = 2
 
         _Q_LOGIN_USER = ("SELECT username, password "
-                        "FROM Users "
-                        "WHERE username = '{}'; ")
+                         "FROM Users "
+                         "WHERE username = '{}'; ")
 
         def __init__(self):
             pass
@@ -163,11 +165,11 @@ try:
 
     class CreateAccountState:
         _QC_CREATE_USER = ("INSERT INTO Users VALUES "
-                        "('{}', '{}', '{}', '{}', {}, '{}', {}); ")
+                           "('{}', '{}', '{}', '{}', {}, '{}', {}); ")
 
         _QC_CREATE_ACCOUNT = ("INSERT INTO account "
-                            "VALUES "
-                            "({}, '{}', {}, '{}'); ")
+                              "VALUES "
+                              "({}, '{}', {}, '{}'); ")
 
         def __init__(self):
             pass
@@ -300,6 +302,7 @@ try:
             userFirstName = getUserInfo(self._username)[0]
             createUpdate(receiverName, f"{userFirstName} payed {amount}", f"{comment}")
             createUpdate(self._username, f"Payed {amount} to {recFirstName}", f"{comment}")
+
             db.commit()
 
             print("Transaction made successfully.")
@@ -355,8 +358,8 @@ try:
 
     class CreateFDState:
         _QC_CREATE_FD = ("INSERT INTO FixedDepo "
-                        "(fdName, username, principal, interest, creationdate, timeperiod, maturedate) "
-                        "VALUES('{}', '{}', {}, {}, '{}', {}, '{}'); ")
+                         "(fdName, username, principal, interest, creationdate, timeperiod, maturedate) "
+                         "VALUES('{}', '{}', {}, {}, '{}', {}, '{}'); ")
 
         def __init__(self, username : str):
             self._username = username
@@ -407,10 +410,10 @@ try:
         _Q_GET_FD_DETAILS = ("SELECT * FROM FixedDepo "
                              "WHERE username = '{}' AND fdName = '{}'; ")
         _QC_WITHDRAW_FD = ("UPDATE FixedDepo "
-                        "SET withdrawn = 1 "
-                        "WHERE username = '{}' AND fdName = '{}'; ")
+                           "SET withdrawn = 1 "
+                           "WHERE username = '{}' AND fdName = '{}'; ")
         _Q_GET_ALL_FDS = ("SELECT fdName FROM FixedDepo "
-                        "WHERE username = '{}'; ")
+                          "WHERE username = '{}'; ")
 
         def __init__(self, username : str):
             self._username = username
