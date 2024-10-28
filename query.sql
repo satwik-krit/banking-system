@@ -69,7 +69,8 @@ CREATE TABLE Transactions (
 DROP TABLE IF EXISTS Updates;
 CREATE TABLE Updates (
     username VARCHAR(50) NOT NULL,
-    content TINYTEXT NOT NULL,
+    baseContent TINYTEXT NOT NULL,
+    extraContent TEXT NOT NULL,
     updateDate DATE,
 
     FOREIGN KEY(username) REFERENCES Users(username)
