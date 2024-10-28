@@ -8,9 +8,16 @@ try:
 
     db = sqlconn.connect(host="localhost", user="root", password="root", database="t")
     crsr = db.cursor(buffered=True)
-
+        
+    print(crsr.fetchone())
     def execute(query : str, args : tuple) -> None:
         crsr.execute(query.format(*args))
+
+    def resultExists(result):
+        if len(result):
+            return True
+        else:
+            return False
 
     def getBalance(username : str) -> int:
         Q_GET_BALANCE = ("SELECT balance "
@@ -58,6 +65,38 @@ try:
                 print(failMsg)
             else:
                 return int(inpStr)
+    
+    def getUpdates(username, date=None):
+        print(username, date)
+        _Q_GET_UPDATES_ALL = ("SELECT baseContent, extraContent, updateDate "
+                              "FROM Updates "
+                              "WHERE username = '{}';")
+
+        _Q_GET_UPDATES_DAY = ("SELECT baseContent, extraContent, updateDate "
+                              "FROM Updates "
+                              "WHERE username = '{}' "
+                              "AND updateDate = '{}'")
+
+        if date:
+            execute(_Q_GET_UPDATES_DAY, (username, date))
+            return crsr.fetchall()
+        else:
+            execute(_Q_GET_UPDATES_ALL, (username, ))
+            return crsr.fetchall()
+
+    def createUpdate(username, baseContent, extraContent="No comment", _date=date.today()):
+        _QC_CREATE_UPDATE = ("INSERT INTO Updates "
+                             "VALUES "
+                             "('{}', '{}', '{}', '{}')")
+        execute(_QC_CREATE_UPDATE, (username, baseContent, extraContent, _date))
+        db.commit()
+
+    def getUserInfo(username):
+        _Q_GET_USER = ("SELECT firstname, lastname, age, phone, inactive "
+                       "FROM Users "
+                       "WHERE username = '{}' ;")
+        execute(_Q_GET_USER, (username,))
+        return crsr.fetchone()
 
     class LockedState:
         def __init__(self):
@@ -70,6 +109,7 @@ try:
             print("Enter username and password to view details or create a new account")
             print("(1) Login")
             print("(2) Create an account")
+            print("(3) Quit")
             print()
 
             option = intInput("(Option) -> ")
@@ -184,14 +224,23 @@ try:
 
             # print and remove updates
             balance = getBalance(self._username)
+            updates = getUpdates(self._username, date.today())
+            print(updates)
+
 
             print("===================================")
             print(f"BALANCE: {balance}")
+            if resultExists(updates):
+                print("TODAY'S UPDATES:", end=" ")
+                for content, _, __ in updates:
+                    print(f"{content}", end=", ")
+            print()
             print("(0) Logout")
             print("(1) Pay")
             print("(2) Deposit")
             print("(3) Create a fixed deposit")
             print("(4) Modify/View fixed deposits")
+            print("(5) View all updates for your account")
             print()
 
             option = intInput("(Option) -> ")
@@ -210,6 +259,9 @@ try:
 
             elif option == 4:
                 currentState = ViewFDState(self._username)
+            
+            elif option == 5:
+                currentState = ViewUpdatesState(self._username)
 
             else:
                 print()
@@ -243,6 +295,11 @@ try:
             changeBalance(self._username, -amount)
             execute(self._QC_PAY_USER, (self._username, receiverName, str(date.today()), amount, comment))
             changeBalance(receiverName, amount)
+
+            recFirstName = getUserInfo(receiverName)[0]
+            userFirstName = getUserInfo(self._username)[0]
+            createUpdate(receiverName, f"{userFirstName} payed {amount}", f"{comment}")
+            createUpdate(self._username, f"Payed {amount} to {recFirstName}", f"{comment}")
             db.commit()
 
             print("Transaction made successfully.")
@@ -284,6 +341,7 @@ try:
 
         def _deposit(self, amount : int) -> None:
             changeBalance(self._username, amount)
+            createUpdate(self._username, f"Deposit {amount}")
             db.commit()
 
         def process(self):
@@ -316,7 +374,7 @@ try:
             execute(self._QC_CREATE_FD, (name, self._username, amount, 2, str(date.today()), period, 
                     date.today() + relativedelta(years=period)))
             db.commit()
-
+            createUpdate(self._username, f"Create {name} FD")
             print("FD created successfully.")
 
         def process(self):
@@ -347,7 +405,7 @@ try:
 
     class ViewFDState:
         _Q_GET_FD_DETAILS = ("SELECT * FROM FixedDepo "
-                            "WHERE username = '{}' AND fdName = '{}'; ")
+                             "WHERE username = '{}' AND fdName = '{}'; ")
         _QC_WITHDRAW_FD = ("UPDATE FixedDepo "
                         "SET withdrawn = 1 "
                         "WHERE username = '{}' AND fdName = '{}'; ")
@@ -423,7 +481,7 @@ try:
                 execute(self._Q_GET_ALL_FDS, (self._username,))
                 fdNames = crsr.fetchall()
 
-                if len(fdNames) == 0:
+                if resultExists():
                     print("You don't have any FDs yet.")
                     return
                 
@@ -449,6 +507,63 @@ try:
                 print()
                 print("Please choose a valid option.")
 
+    class ViewUpdatesState:
+        def __init__(self, username):
+            self._username = username
+
+        def _displayUpdates(self, updates):
+            # sort updates from most recent to last
+            updates.sort(key = lambda x: x[2])
+            for index, update in enumerate(updates):
+                baseContent, extraContent, updateDate = update
+                print()
+                print(f"({index}): {baseContent}")
+                print(f"Date: {updateDate}")
+                print(f"Comment: {extraContent}")
+
+        def process(self):
+            global currentState
+
+            print("=============================")
+            print("(0) View all updates")
+            print("(1) View all updates for a day")
+            print("(2) Return")
+            print()
+
+            option = intInput("(Option) -> ")
+
+            if option == 0:
+                updates = getUpdates(self._username)
+                if not resultExists(updates):
+                    print("You have no updates for your account.")
+                
+                else:
+                    self._displayUpdates(updates)
+
+            elif option == 1:
+                inp = input("(Required date, in YYYY-MM-DD format) -> ")
+
+                try:
+                    _date = date.fromisoformat(inp)
+                    updates = getUpdates(self._username, _date)
+
+                    if not resultExists(updates ):
+                        print(f"You have no updates for your account at {inp}.")
+                    
+                    else:
+                        self._displayUpdates(updates)
+
+                except ValueError:
+                    print("Invalid date.")
+
+            elif option == 2:
+                currentState = UnlockedState(self._username)
+
+            else:
+                print("Please choose a valid option.")
+
+
+
     if __name__ == '__main__':
         currentState = LockedState()
 
@@ -456,4 +571,5 @@ try:
             currentState.process()
 
 except KeyboardInterrupt:
+    print("Quit")
     db.close()
