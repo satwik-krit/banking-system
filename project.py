@@ -225,6 +225,7 @@ try:
             self._username = username
 
         def _pay(self, receiverName : str, amount : float, comment: str) -> int:
+            global currentState
             balance = getBalance(self._username)
 
             if receiverName == self._username:
@@ -245,6 +246,8 @@ try:
             db.commit()
 
             print("Transaction made successfully.")
+
+            currentState = UnlockedState(self._username)
 
         def process(self):
             global currentState
