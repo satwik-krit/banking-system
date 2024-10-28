@@ -35,12 +35,12 @@ CREATE TABLE FixedDepo (
     creationdate DATE NOT NULL,
     timeperiod INT NOT NULL,
     maturedate DATE NOT NULL,
-    matured TINYINT(1) NOT NULL DEFAULT 0,
+    withdrawn INT NOT NULL DEFAULT 0,
 
     PRIMARY KEY(fdName, username),
     CHECK(principal > 0),
     CHECK(interest > 0),
-    CHECK(timeperiod BETWEEN 0 AND 10)
+    CHECK(timeperiod BETWEEN 0 AND 10),
     CHECK(maturedate = DATE_ADD(creationdate, INTERVAL timeperiod YEAR)),
     FOREIGN KEY(username) REFERENCES Users(username)
     ON DELETE CASCADE

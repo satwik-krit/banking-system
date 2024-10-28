@@ -1,364 +1,459 @@
 # __vimdothis__
 # set makeprg=py\ project.py
 # __vimendthis__
-from datetime import date
+from datetime import *
 from dateutil.relativedelta import relativedelta
 import mysql.connector as sqlconn
 
-currentState = None
+try:
 
-db = sqlconn.connect(host="localhost", user="root", password="nandan99rd", database="nandan")
-crsr = db.cursor(buffered=True)
+    currentState = None
 
-# QUERIES
-LOGIN_USER = ("SELECT username, password "
-              "FROM Users "
-              "WHERE username = '{}';")
+    db = sqlconn.connect(host="localhost", user="root", password="nandan99rd", database="nandan")
+    crsr = db.cursor(buffered=True)
 
-CHECK_USERNAME = ("SELECT username "
-                  "FROM Users "
-                  "WHERE username = '{}';")
+    def execute(query : str, args : tuple) -> None:
+        crsr.execute(query.format(*args))
 
-INSERT_USER = ("INSERT INTO Users VALUES "
-               "('{}', '{}', '{}', '{}', {}, '{}', {});")
+    def getBalance(username : str) -> int:
+        Q_GET_BALANCE = ("SELECT balance "
+                        "FROM account "
+                        "WHERE username = '{}';")
 
-CREATE_ACCOUNT = ("INSERT INTO account "
-                  "VALUES "
-                  "({}, '{}', {}, '{}');")
+        execute(Q_GET_BALANCE, (username,))
+        return crsr.fetchone()[0]
 
-GET_BALANCE = ("SELECT balance "
-               "FROM account "
-               "WHERE username = '{}';")
+    def changeBalance(username : str, change : int) -> None:
+        QC_CHANGE_BALANCE = ("UPDATE Account "
+                            "SET balance = balance + {1} "
+                            "WHERE username = '{0}'; ")
+        
+        execute(QC_CHANGE_BALANCE, (username, change))
+        db.commit()
 
-PAY_USER = (("UPDATE account "
-             "SET balance = balance - {1} "
-             "WHERE username = '{0}'; "),
-            ("INSERT INTO transactions "
-             "(payerID, receiverID, transDate, amount, comment) "
-             "VALUES "
-             "('{}', '{}', '{}', {}, '{}'); "),
-            ("UPDATE account "
-             "SET balance = balance + {1} "
-             "WHERE username = '{0}'; "))
+    def checkUserExists(username : str) -> bool:
+        Q_CHECK_USERNAME = ("SELECT username "
+                            "FROM Users "
+                            "WHERE username = '{}';")
 
-DEPOSIT = ("UPDATE account "
-           "SET balance = balance + {1} "
-           "WHERE username = '{0}'; ")
-
-CREATE_FD = ("INSERT INTO FixedDepo "
-             "(fdName, username, principal, interest, creationdate, timeperiod, maturedate) "
-             "VALUES('{}', '{}', {}, {}, '{}', {}, '{}'); ")
-
-CHECK_FD_EXISTS = ("SELECT * FROM FixedDepo "
-                   "WHERE username = '{}' AND fdName = '{}'; ")
-
-def execute(query : str, args : tuple):
-    crsr.execute(query.format(*args))
-    db.commit()
-
-def getBalance(username : str) -> int:
-    execute(GET_BALANCE, (username,))
-    return crsr.fetchone()[0]
-
-def checkUserExists(username : str) -> bool:
-    execute(CHECK_USERNAME, (username,))
-    if len(crsr.fetchall()) != 0:
-        return True
-    else:
-        return False
-
-class LockedState:
-    def __init__(self):
-        pass
-
-    def process(self):
-        global currentState
-
-        print("======================================================================")
-        print("Enter username and password to view details or create a new account")
-        print("(1) Login")
-        print("(2) Create an account")
-        print()
-
-        option = int(input("(Option) -> ").strip())
-
-        if option == 1:
-            currentState = LoginState()
-
-        elif option == 2:
-            currentState = CreateAccountState()
-
-class LoginState:
-    _LOGIN_SUCCESS = 0
-    _LOGIN_PASSWORD_INCORRECT = 1
-    _LOGIN_USER_NOTFOUND = 2
-
-    def __init__(self):
-        pass
-
-    def _login(self, username : str, password : str) -> int:
-        execute(LOGIN_USER, (username,))
-        record = crsr.fetchone()
-
-        if record == None:
-            return self._LOGIN_USER_NOTFOUND 
-        elif record[1] != password:
-            return self._LOGIN_PASSWORD_INCORRECT
+        execute(Q_CHECK_USERNAME, (username,))
+        if len(crsr.fetchall()) != 0:
+            return True
         else:
-            return self._LOGIN_SUCCESS
+            return False
 
-    def process(self):
-        global currentState
+    def checkFDExists(username : str, fdName : str) -> bool:
+        Q_CHECK_FD_EXISTS = ("SELECT * FROM FixedDepo "
+                            "WHERE username = '{}' AND fdName = '{}'; ")
 
-        print("=======================================")
-        username = input("(Enter Username) -> ").strip()
-        password = input("(Enter Password) -> ").strip()
-        loginStatus = self._login(username, password)
-
-        if loginStatus == self._LOGIN_SUCCESS:
-            currentState = UnlockedState(username)
-
-        elif loginStatus == self._LOGIN_PASSWORD_INCORRECT:
-            print()
-            print("Incorrect Password.")
-            currentState = LockedState()
-
-        elif loginStatus == self._LOGIN_USER_NOTFOUND:
-            print()
-            print("Username not found.")
-            currentState = LockedState()
-
-class CreateAccountState:
-    def __init__(self):
-        pass
-    
-    def _createNewUser(self, username : str, password : str, firstname : str, 
-                       lastname : str, age : int, phone : int) -> int:
-        execute(INSERT_USER, (password, username, firstname, lastname, age, phone, 0))
-        execute(CREATE_ACCOUNT, (0, str(date.today()), 0, username))
-
-    def process(self):
-        global currentState
-
-        print("========================================")
-        username = input("(Enter NEW Username) -> ").strip()
-
-        uniqueStatus = self._checkUsernameUnique(username)
-
-        if checkUserExists(username):
-            print()
-            print("Username not unique.")
-            return
-
-        password = input("(Enter NEW Password) -> ").strip()
-        firstname = input("(Enter first name) -> ").strip()
-        lastname = input("(Enter last name) -> ").strip()
-        age = int(input("(Enter age) -> ").strip())
-        phone = int(input("(Enter phone no.) -> ").strip())
-        print()
-
-        self._createNewUser(username, password, firstname, lastname, age, phone)
-
-        currentState = UnlockedState(username)
-
-class UnlockedState:
-    def __init__(self, username : str):
-        self._username = username
-
-    def process(self):
-        global currentState
-
-        # print and remove updates
-        balance = getBalance(self._username)
-
-        print("===================================")
-        print(f"BALANCE: {balance}")
-        print("(0) Logout")
-        print("(1) Pay")
-        print("(2) Deposit")
-        print("(3) Create a fixed deposit")
-        print("(4) Modify/View fixed deposits")
-        print()
-
-        option = int(input("(Option) -> ").strip())
-
-        if option == 1:
-            currentState = PayState(self._username)
-
-        elif option == 2:
-            currentState = DepositState(self._username)
-
-        elif option == 3:
-            currentState = CreateFDState(self._username)
-
-        elif option == 0:
-            currentState = LockedState()
-
-        elif option == 4:
-            currentState = ViewFDState(self._username)
-
-class PayState:
-    def __init__(self, username : str):
-        self._username = username
-
-        self._PAYMENT_SUCCESS = 0
-        self._PAYMENT_NO_RECEIVER = 1
-        self._PAYMENT_INSUFFICIENT_BALANCE = 2
-        self._PAYMENT_CANT_PAY_SELF = 3
-
-    def _pay(self, receiverName : str, amount : float, comment: str) -> int:
-        balance = getBalance(self._username)
-
-        if amount > balance:
-            return self._PAYMENT_INSUFFICIENT_BALANCE
-
-        elif not checkUserExists(receiverName):
-            return self._PAYMENT_NO_RECEIVER
-
-        elif receiverName == self._username:
-            return self._PAYMENT_CANT_PAY_SELF
-
-        else:
-            execute(PAY_USER[0], (self._username, amount))
-            execute(PAY_USER[1], (self._username, receiverName, str(date.today()), amount, comment))
-            execute(PAY_USER[2], (receiverName, amount))
-
-            return self._PAYMENT_SUCCESS 
-
-    def process(self):
-        global currentState
-
-        print("===========================")
-        print("(0) Pay to another user")
-        print("(1) Abort")
-        print()
-
-        option = int(input("(Option) -> ").strip())
-        print()
-
-        if option == 0:
-            receiverName = input("(Enter username of receiver) -> ").strip()
-            amount = int(input("(Enter amount to pay) -> ").strip())
-            comment =  input("Enter comment (optional)) -> ").strip()
-
-            if not comment:
-                comment = "No comment"
-
-            paymentStatus = self._pay(receiverName, amount, comment)
-
-            if paymentStatus == self._PAYMENT_SUCCESS:
-                print("Transaction made successfully")
-
-            elif paymentStatus == self._PAYMENT_INSUFFICIENT_BALANCE:
-                print("You don't have enough balance to make this payment.")
-
-            elif paymentStatus == self._PAYMENT_NO_RECEIVER:
-                print("This receiver does not exist.")
-
-            elif paymentStatus == self._PAYMENT_CANT_PAY_SELF:
-                print("You cannot pay to yourself.")
-
-        elif option == 1:
-            currentState = UnlockedState(self._username)
-
-class DepositState:
-    def __init__(self, username : str):
-        self._username = username
-
-    def _deposit(self, amount : int) -> None:
-        execute(DEPOSIT, (self._username, amount))
-
-    def process(self):
-        global currentState
-
-        print("======================================================================")
-        amount = int(input("(Enter amount to deposit (cash to digital money)) -> "))
-        self._deposit(amount)
-
-        currentState = UnlockedState(self._username)
-
-class CreateFDState:
-    def __init__(self, username : str):
-        self._username = username
-
-        self._CREATE_FD_SUCCESS = 0
-        self._CREATE_FD_FAILURE = 1
-
-    def _checkFDExists(self, name : str) -> bool:
-        execute(CHECK_FD_EXISTS, (self._username, name))
+        execute(Q_CHECK_FD_EXISTS, (username, fdName))
 
         if len(crsr.fetchall()) != 0:
             return True
         else:
             return False
 
-    def _createFD(self, name : str, amount : int, period : int) -> int:
-        execute(CREATE_FD, (name, self._username, amount, 2, str(date.today()), period, 
-                date.today() + relativedelta(years=period)))
-        
-        # complete this
+    def intInput(prompt : str, failMsg : str = "Invalid input.") -> int:
+        while True:
+            inpStr = input(prompt).strip()
 
-    def process(self):
-        global currentState
+            if not inpStr.isdigit():
+                print(failMsg)
+            else:
+                return int(inpStr)
 
-        print("======================")
-        print("(0) Create new FD")
-        print("(1) Return")
-        print()
+    class LockedState:
+        def __init__(self):
+            pass
 
-        option = int(input("(Option) -> "))
+        def process(self):
+            global currentState
 
-        if option == 0:
+            print("======================================================================")
+            print("Enter username and password to view details or create a new account")
+            print("(1) Login")
+            print("(2) Create an account")
             print()
-            name = input("(Enter FD name) -> ")
-            
-            if self._checkFDExists(name):
-                print()
-                print("Fixed deposit with this name already exists.")
+
+            option = intInput("(Option) -> ")
+
+            if option == 1:
+                currentState = LoginState()
+
+            elif option == 2:
+                currentState = CreateAccountState()
 
             else:
-                amount = int(input("(Enter amount) -> "))
-                period = int(input("(Enter time period in years (under 10)) -> "))
+                print()
+                print("Please choose a valid option.")
 
-                createFDStatus = self._createFD(name, amount, period)
+    class LoginState:
+        _LOGIN_SUCCESS = 0
+        _LOGIN_PASSWORD_INCORRECT = 1
+        _LOGIN_USER_NOTFOUND = 2
 
-                if createFDStatus == self._CREATE_FD_SUCCESS:
-                    print("Fixed deposit created successfully.")
+        _Q_LOGIN_USER = ("SELECT username, password "
+                        "FROM Users "
+                        "WHERE username = '{}'; ")
 
-                elif createFDStatus == self._CREATE_FD_FAILURE:
-                    print("Insufficient balance.")
-
-        elif option == 1:
-            currentState = UnlockedState(self._username)
-
-class ViewFDState:
-    def __init__(self, username : str):
-        self._username = username
-    
-    def process(self):
-        global currentState
-
-        # display FDs
-
-        print("(0) View another FD")
-        print("(1) Withdraw an FD")
-        print("(2) Return")
-
-        option = int(input("(Option) -> "))
-
-        if option == 0:
-            # sql stuff
+        def __init__(self):
             pass
 
-        elif option == 1:
-            # sql stuff
-            pass
+        def _login(self, username : str, password : str) -> int:
+            execute(self._Q_LOGIN_USER, (username,))
+            record = crsr.fetchone()
 
-        elif option == 2:
+            if record == None:
+                print("Username not found.")
+                return 
+            
+            if record[1] != password:
+                print("Incorrect password.")
+                return 
+            
+            print("Logged in successfully.")
+
+            global currentState
+            currentState = UnlockedState(username)
+
+        def process(self):
+            print("=======================================")
+            username = input("(Enter Username) -> ").strip()
+            password = input("(Enter Password) -> ").strip()
+            print()
+
+            self._login(username, password)
+
+    class CreateAccountState:
+        _QC_CREATE_USER = ("INSERT INTO Users VALUES "
+                        "('{}', '{}', '{}', '{}', {}, '{}', {}); ")
+
+        _QC_CREATE_ACCOUNT = ("INSERT INTO account "
+                            "VALUES "
+                            "({}, '{}', {}, '{}'); ")
+
+        def __init__(self):
+            pass
+        
+        def _createNewUser(self, username : str, password : str, firstname : str, 
+                        lastname : str, age : int, phone : int) -> int:
+            execute(self._QC_CREATE_USER, (password, username, firstname, lastname, age, phone, 0))
+            execute(self._QC_CREATE_ACCOUNT, (0, str(date.today()), 0, username))
+            db.commit()
+
+        def process(self):
+            global currentState
+
+            print("========================================")
+            print("(0) Create account")
+            print("(1) Abort")
+            print()
+
+            option = intInput("(Option) -> ")
+
+            if option == 0:
+                print()
+                username = input("(Enter NEW Username) -> ").strip()
+
+                if checkUserExists(username):
+                    print()
+                    print("Username not unique.")
+                    return
+
+                password = input("(Enter NEW Password) -> ").strip()
+                firstname = input("(Enter first name) -> ").strip()
+                lastname = input("(Enter last name) -> ").strip()
+                age = intInput("(Enter age) -> ")
+                phone = intInput("(Enter phone no.) -> ")
+                print()
+
+                self._createNewUser(username, password, firstname, lastname, age, phone)
+
+                currentState = UnlockedState(username)
+
+            elif option == 1:
+                currentState = LockedState()
+
+            else:
+                print()
+                print("Please choose a valid option")
+
+    class UnlockedState:
+        def __init__(self, username : str):
+            self._username = username
+
+        def process(self):
+            global currentState
+
+            # print and remove updates
+            balance = getBalance(self._username)
+
+            print("===================================")
+            print(f"BALANCE: {balance}")
+            print("(0) Logout")
+            print("(1) Pay")
+            print("(2) Deposit")
+            print("(3) Create a fixed deposit")
+            print("(4) Modify/View fixed deposits")
+            print()
+
+            option = intInput("(Option) -> ")
+
+            if option == 1:
+                currentState = PayState(self._username)
+
+            elif option == 2:
+                currentState = DepositState(self._username)
+
+            elif option == 3:
+                currentState = CreateFDState(self._username)
+
+            elif option == 0:
+                currentState = LockedState()
+
+            elif option == 4:
+                currentState = ViewFDState(self._username)
+
+            else:
+                print()
+                print("Please choose a valid option.")
+
+    class PayState:
+        _QC_PAY_USER = ("INSERT INTO transactions "
+                        "(payerID, receiverID, transDate, amount, comment) "
+                        "VALUES "
+                        "('{}', '{}', '{}', {}, '{}'); ")
+
+        def __init__(self, username : str):
+            self._username = username
+
+        def _pay(self, receiverName : str, amount : float, comment: str) -> int:
+            balance = getBalance(self._username)
+
+            if receiverName == self._username:
+                print("You cannot pay yourself.")
+                return
+
+            if not checkUserExists(receiverName):
+                print("This receiver does not exist.")
+                return
+
+            if amount > balance:
+                print("You do not have sufficient balance.")
+                return
+
+            changeBalance(self._username, -amount)
+            execute(self._QC_PAY_USER, (self._username, receiverName, str(date.today()), amount, comment))
+            changeBalance(receiverName, amount)
+            db.commit()
+
+            print("Transaction made successfully.")
+
+        def process(self):
+            global currentState
+
+            print("===========================")
+            print("(0) Pay to another user")
+            print("(1) Abort")
+            print()
+
+            option = intInput("(Option) -> ")
+
+            if option == 0:
+                print()
+                receiverName = input("(Enter username of receiver) -> ").strip()
+                amount = intInput("(Enter amount to pay) -> ")
+                comment =  input("Enter comment (optional)) -> ").strip()
+                print()
+
+                if not comment:
+                    comment = "No comment"
+
+                self._pay(receiverName, amount, comment)
+
+            elif option == 1:
+                currentState = UnlockedState(self._username)
+
+            else:
+                print()
+                print("Please choose a valid option.")
+
+    class DepositState:
+        def __init__(self, username : str):
+            self._username = username
+
+        def _deposit(self, amount : int) -> None:
+            changeBalance(self._username, amount)
+            db.commit()
+
+        def process(self):
+            global currentState
+
+            print("======================================================================")
+            amount = intInput("(Enter amount to deposit (cash to digital money)) -> ")
+            self._deposit(amount)
+
             currentState = UnlockedState(self._username)
 
-if __name__ == '__main__':
-    currentState = LockedState()
+    class CreateFDState:
+        _QC_CREATE_FD = ("INSERT INTO FixedDepo "
+                        "(fdName, username, principal, interest, creationdate, timeperiod, maturedate) "
+                        "VALUES('{}', '{}', {}, {}, '{}', {}, '{}'); ")
 
-    while True:
-        currentState.process()
+        def __init__(self, username : str):
+            self._username = username
+
+        def _createFD(self, name : str, amount : int, period : int) -> None:
+            if checkFDExists(self._username, name):
+                print("FD with this name already exists")
+                return
+
+            if getBalance(self._username) < amount:
+                print("You do not have sufficient balance.")
+                return
+
+            changeBalance(self._username, -amount)
+            execute(self._QC_CREATE_FD, (name, self._username, amount, 2, str(date.today()), period, 
+                    date.today() + relativedelta(years=period)))
+            db.commit()
+
+            print("FD created successfully.")
+
+        def process(self):
+            global currentState
+
+            print("======================")
+            print("(0) Create new FD")
+            print("(1) Return")
+            print()
+
+            option = intInput("(Option) -> ")
+
+            if option == 0:
+                print()
+                name = input("(Enter FD name) -> ")
+                amount = intInput("(Enter amount) -> ")
+                period = intInput("(Enter time period in years (under 10)) -> ")
+                print()
+
+                self._createFD(name, amount, period)
+
+            elif option == 1:
+                currentState = UnlockedState(self._username)
+
+            else:
+                print()
+                print("Please choose a valid option.")
+
+    class ViewFDState:
+        _Q_GET_FD_DETAILS = ("SELECT * FROM FixedDepo "
+                            "WHERE username = '{}' AND fdName = '{}'; ")
+        _QC_WITHDRAW_FD = ("UPDATE FixedDepo "
+                        "SET withdrawn = 1 "
+                        "WHERE username = '{}' AND fdName = '{}'; ")
+        _Q_GET_ALL_FDS = ("SELECT fdName FROM FixedDepo "
+                        "WHERE username = '{}'; ")
+
+        def __init__(self, username : str):
+            self._username = username
+
+        def _getFDComputedDetails(self, record : tuple):
+                passedTimeDelta = relativedelta(date.today(), record[4])
+
+                yearsPassed = passedTimeDelta.years + (passedTimeDelta.months / 12) + (passedTimeDelta.days / 365.25)
+                matured = False if yearsPassed < record[5] else True
+                value = (record[2] * record[3] * (record[5] if matured else yearsPassed) / 100) + record[2]
+
+                return (yearsPassed, matured, value)
+
+        def _printFD(self, fdName : str) -> None:
+            if not checkFDExists(self._username, fdName):
+                print("FD with this name does not exist.")
+                return
+            
+            execute(self._Q_GET_FD_DETAILS, (self._username, fdName))
+            record = crsr.fetchone()
+            computedDetails = self._getFDComputedDetails(record)
+
+            print(f"Principal : {record[2]}")
+            print(f"Interest : {record[3]}")
+            print(f"Created : {record[4]}")
+            print(f"Total time period (years) : {record[5]}")
+            print(f"Time passed (years) : {computedDetails[0]}")
+            print(f"Current value : {computedDetails[2]}")
+            print(f"Mature date : {record[6]}")
+            print(f"Matured? : {"Yes" if computedDetails[1] else "No"}")
+            print(f"Widthdrawn? : {"Yes" if record[7] else "No"}")
+
+        def _withdrawFD(self, fdName : str) -> None:
+            if not checkFDExists(self._username, fdName):
+                print("FD with this name does not exist.")
+                return
+
+            execute(self._Q_GET_FD_DETAILS, (self._username, fdName))
+            record = crsr.fetchone()
+
+            if record[7]:
+                print("You have already withdrawn this FD.")
+                return
+            
+            computedDetails = self._getFDComputedDetails(record)
+            execute(self._QC_WITHDRAW_FD, (self._username, fdName))
+            changeBalance(self._username, computedDetails[2])
+
+            db.commit()
+
+            print(f"Withdrew amount {computedDetails[2]} from FD {fdName}.")
+        
+        def process(self):
+            global currentState
+
+            # display FDs
+
+            print("=============================")
+            print("(0) Show all FDs")
+            print("(1) View details of a particular FD")
+            print("(2) Withdraw an FD")
+            print("(3) Return")
+            print()
+
+            option = intInput("(Option) -> ")
+
+            if option == 0:
+                execute(self._Q_GET_ALL_FDS, (self._username,))
+                fdNames = crsr.fetchall()
+
+                if len(fdNames) == 0:
+                    print("You don't have any FDs yet.")
+                    return
+                
+                for fdName in fdNames:
+                    print(fdName[0])
+
+            elif option == 1:
+                print()
+                fdName = input("(Enter FD name) -> ").strip()
+                print()
+                self._printFD(fdName)
+
+            elif option == 2:
+                print()
+                fdName = input("(Enter FD name) -> ").strip()
+                print()
+                self._withdrawFD(fdName)
+
+            elif option == 3:
+                currentState = UnlockedState(self._username)
+
+            else:
+                print()
+                print("Please choose a valid option.")
+
+    if __name__ == '__main__':
+        currentState = LockedState()
+
+        while True:
+            currentState.process()
+
+except KeyboardInterrupt:
+    db.close()
