@@ -1,3 +1,4 @@
+import time
 from datetime import *
 from dateutil.relativedelta import relativedelta
 import mysql.connector as sqlconn
@@ -5,8 +6,9 @@ import mysql.connector as sqlconn
 try:
 
     currentState = None
+    TIMEDELTA = 10
 
-    db = sqlconn.connect(host="localhost", user="root", password="root", database="t")
+    db = sqlconn.connect(host="localhost", user="root", password="VSE@2022", database="bank", charset="utf8")
     crsr = db.cursor(buffered=True)
         
     def execute(query : str, args : tuple) -> None:
@@ -66,7 +68,6 @@ try:
                 return int(inpStr)
     
     def getUpdates(username, date=None):
-        print(username, date)
         _Q_GET_UPDATES_ALL = ("SELECT baseContent, extraContent, updateDate "
                               "FROM Updates "
                               "WHERE username = '{}';")
@@ -83,7 +84,7 @@ try:
             execute(_Q_GET_UPDATES_ALL, (username, ))
             return crsr.fetchall()
 
-    def createUpdate(username, baseContent, extraContent="No comment", _date=date.today()):
+    def createUpdate(username, baseContent, extraContent="No comment", _date=currentDate):
         _QC_CREATE_UPDATE = ("INSERT INTO Updates "
                              "VALUES "
                              "('{}', '{}', '{}', '{}')")
@@ -177,7 +178,7 @@ try:
         def _createNewUser(self, username : str, password : str, firstname : str, 
                         lastname : str, age : int, phone : int) -> int:
             execute(self._QC_CREATE_USER, (password, username, firstname, lastname, age, phone, 0))
-            execute(self._QC_CREATE_ACCOUNT, (0, str(date.today()), 0, username))
+            execute(self._QC_CREATE_ACCOUNT, (0, str(currentDate), 0, username))
             db.commit()
 
         def process(self):
@@ -226,9 +227,7 @@ try:
 
             # print and remove updates
             balance = getBalance(self._username)
-            updates = getUpdates(self._username, date.today())
-            print(updates)
-
+            updates = getUpdates(self._username, currentDate)
 
             print("===================================")
             print(f"BALANCE: {balance}")
@@ -295,7 +294,7 @@ try:
                 return
 
             changeBalance(self._username, -amount)
-            execute(self._QC_PAY_USER, (self._username, receiverName, str(date.today()), amount, comment))
+            execute(self._QC_PAY_USER, (self._username, receiverName, str(currentDate), amount, comment))
             changeBalance(receiverName, amount)
 
             recFirstName = getUserInfo(receiverName)[0]
@@ -374,7 +373,7 @@ try:
                 return
 
             changeBalance(self._username, -amount)
-            execute(self._QC_CREATE_FD, (name, self._username, amount, 2, str(date.today()), period, 
+            execute(self._QC_CREATE_FD, (name, self._username, amount, 2, str(currentDate), period, 
                     date.today() + relativedelta(years=period)))
             db.commit()
             createUpdate(self._username, f"Create {name} FD")
@@ -569,9 +568,18 @@ try:
 
     if __name__ == '__main__':
         currentState = LockedState()
+        currentDate = date.today()
+        previousTime = time.time()
 
         while True:
+            currentTime = time.time()
+            if currentTime - previousTime >= TIMEDELTA:
+                numDays = currentTime - previousTime // TIMEDELTA
+                print(numDays)
+                currentDate += datetime.timedelta(day=numDays)
+
             currentState.process()
+            previousTime = time.time()
 
 except KeyboardInterrupt:
     print("Quit")
