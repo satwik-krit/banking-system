@@ -5,6 +5,11 @@ from dateutil.relativedelta import relativedelta
 import mysql.connector as sqlconn
 from mysql.connector import DataError, DatabaseError, OperationalError, NotSupportedError, IntegrityError, ProgrammingError, InternalError
 
+# TERMINAL COLOR CODES
+START, END = '\033[', '\033[0m' # START must also include m after the codes and before the actual text!
+C_URGENT = START+'48;2;255;0;0;38;2;255;255;255m'
+C_IMPORTANT = START+'38;2;241;196;15m'
+
 try:
 
     currentState = None
@@ -20,7 +25,8 @@ try:
         exit(code)
 
     def execute(query : str, args : tuple) -> None:
-        # print('\033[31;100;1;4m'+query.format(*args)+'\033[0m')
+        print(C_IMPORTANT+query.format(*args)+END)
+        # print('\033[31;12;100;1;4m'+query.format(*args)+'\033[0m')
         crsr.execute(query.format(*args))
 
     def resultExists(result):
