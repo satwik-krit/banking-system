@@ -1,4 +1,5 @@
 import time
+from getpass import getpass
 import datetime as dt
 from dateutil.relativedelta import relativedelta
 import mysql.connector as sqlconn
@@ -164,7 +165,7 @@ try:
         def process(self):
             print("=======================================")
             username = input("(Enter Username) -> ").strip()
-            password = input("(Enter Password) -> ").strip()
+            password = getpass("(Enter Password) -> ").strip()
             print()
 
             self._login(username, password)
@@ -205,7 +206,15 @@ try:
                     print("Username not unique.")
                     return
 
-                password = input("(Enter NEW Password) -> ").strip()
+                while True:
+                    password = input("(Enter NEW Password) -> ").strip()
+                    confirmPassword = getpass("(Enter password for confirmation) -> ").strip()
+
+                    if password == confirmPassword:
+                        break
+
+                    print("Passwords do not match. Enter again.")
+
                 firstname = input("(Enter first name) -> ").strip()
                 lastname = input("(Enter last name) -> ").strip()
                 age = intInput("(Enter age) -> ")
@@ -308,7 +317,7 @@ try:
                 print("You do not have sufficient balance.")
                 return
 
-            inpPwd = input("(Enter to password to proceed with payment) -> ")
+            inpPwd = getpass("(Enter to password to proceed with payment) -> ")
             execute(Q_GETUSERPASSWORD, (self._username, ))
             userPwd = crsr.fetchone()[0]
             print(userPwd)
