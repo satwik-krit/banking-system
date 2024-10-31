@@ -75,3 +75,11 @@ CREATE TABLE Updates (
 
     FOREIGN KEY(username) REFERENCES Users(username)
 );
+
+CREATE TABLE EnvInfo (
+    DBCreationDateTime DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Let MySQL fill EnvInfo with the required data.
+INSERT INTO EnvInfo 
+VALUES ();

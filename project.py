@@ -1,14 +1,15 @@
 import time
-from datetime import *
+import datetime as dt
 from dateutil.relativedelta import relativedelta
 import mysql.connector as sqlconn
 
 try:
 
     currentState = None
-    TIMEDELTA = 10
+    TIMEDELTA = 60
+    currentDate = None
 
-    db = sqlconn.connect(host="localhost", user="root", password="VSE@2022", database="bank", charset="utf8")
+    db = sqlconn.connect(host="localhost", user="root", password="root", database="t", charset="utf8")
     crsr = db.cursor(buffered=True)
         
     def execute(query : str, args : tuple) -> None:
@@ -84,12 +85,15 @@ try:
             execute(_Q_GET_UPDATES_ALL, (username, ))
             return crsr.fetchall()
 
-    def createUpdate(username, baseContent, extraContent="No comment", _date=currentDate):
+    def createUpdate(username, baseContent, extraContent="No comment", _date=None):
         _QC_CREATE_UPDATE = ("INSERT INTO Updates "
                              "VALUES "
                              "('{}', '{}', '{}', '{}')")
 
-        execute(_QC_CREATE_UPDATE, (username, baseContent, extraContent, _date))
+        if _date:
+            execute(_QC_CREATE_UPDATE, (username, baseContent, extraContent, _date))
+        else:
+            execute(_QC_CREATE_UPDATE, (username, baseContent, extraContent, currentDate))
 
         db.commit()
 
@@ -224,12 +228,14 @@ try:
 
         def process(self):
             global currentState
+            global currentDate
 
             # print and remove updates
             balance = getBalance(self._username)
             updates = getUpdates(self._username, currentDate)
 
             print("===================================")
+            print(currentDate)
             print(f"BALANCE: {balance}")
             if resultExists(updates):
                 print("TODAY'S UPDATES:", end=" ")
@@ -374,7 +380,7 @@ try:
 
             changeBalance(self._username, -amount)
             execute(self._QC_CREATE_FD, (name, self._username, amount, 2, str(currentDate), period, 
-                    date.today() + relativedelta(years=period)))
+                    dt.date.today() + relativedelta(years=period)))
             db.commit()
             createUpdate(self._username, f"Create {name} FD")
             print("FD created successfully.")
@@ -546,7 +552,7 @@ try:
                 inp = input("(Required date, in YYYY-MM-DD format) -> ")
 
                 try:
-                    _date = date.fromisoformat(inp)
+                    _date = dt.date.fromisoformat(inp)
                     updates = getUpdates(self._username, _date)
 
                     if not resultExists(updates ):
@@ -568,18 +574,33 @@ try:
 
     if __name__ == '__main__':
         currentState = LockedState()
-        currentDate = date.today()
+
+        _Q_GETDBCREATIONDATETIME = ("SELECT DBCreationDateTime "
+                                    "FROM EnvInfo ;")
+
+        # Get the date and time when we created the database
+        execute(_Q_GETDBCREATIONDATETIME, ())
+
+        creationDateTime = crsr.fetchone()[0]
+        creationTime = creationDateTime.timestamp()
+        creationDate = creationDateTime.date()
+        currentTime = time.time() # Get time since epoch
+
+        elapsedTime = currentTime - creationTime # in seconds
+        
+        elapsedDays = elapsedTime // TIMEDELTA # Days according to us
+
+        currentDate = creationDate + dt.timedelta(days=elapsedDays)
+        
         previousTime = time.time()
 
         while True:
             currentTime = time.time()
-            if currentTime - previousTime >= TIMEDELTA:
-                numDays = currentTime - previousTime // TIMEDELTA
-                print(numDays)
-                currentDate += datetime.timedelta(day=numDays)
+            elapsedDays = (currentTime - previousTime) // TIMEDELTA
+            currentDate += dt.timedelta(days=elapsedDays)
 
             currentState.process()
-            previousTime = time.time()
+            previousTime = currentTime
 
 except KeyboardInterrupt:
     print("Quit")
