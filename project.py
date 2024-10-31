@@ -3,6 +3,7 @@ from getpass import getpass
 import datetime as dt
 from dateutil.relativedelta import relativedelta
 import mysql.connector as sqlconn
+from mysql.connector import DataError, DatabaseError, OperationalError, NotSupportedError, IntegrityError, ProgrammingError, InternalError
 
 try:
 
@@ -628,6 +629,9 @@ try:
 
             currentState.process()
             previousTime = currentTime
+
+except (DataError, DatabaseError, OperationalError, NotSupportedError, IntegrityError, ProgrammingError, InternalError) as e:
+    print("DB Error!", e)
 
 except KeyboardInterrupt:
     print("Quit")
