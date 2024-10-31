@@ -14,6 +14,11 @@ try:
     db = sqlconn.connect(host="localhost", user="root", password="root", database="t", charset="utf8")
     crsr = db.cursor(buffered=True)
         
+    def EXIT(code=0):
+        print("Quit")
+        db.close()
+        exit(code)
+
     def execute(query : str, args : tuple) -> None:
         # print('\033[31;100;1;4m'+query.format(*args)+'\033[0m')
         crsr.execute(query.format(*args))
@@ -129,6 +134,9 @@ try:
 
             elif option == 2:
                 currentState = CreateAccountState()
+
+            elif option == 3:
+                EXIT()
 
             else:
                 print()
@@ -634,5 +642,8 @@ except (DataError, DatabaseError, OperationalError, NotSupportedError, Integrity
     print("DB Error!", e)
 
 except KeyboardInterrupt:
-    print("Quit")
-    db.close()
+    EXIT(0)
+
+except Exception as e:
+    print("ERROR: ", e)
+    EXIT(1)
