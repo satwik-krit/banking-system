@@ -13,6 +13,7 @@ try:
     crsr = db.cursor(buffered=True)
         
     def execute(query : str, args : tuple) -> None:
+        # print('\033[31;100;1;4m'+query.format(*args)+'\033[0m')
         crsr.execute(query.format(*args))
 
     def resultExists(result):
@@ -285,6 +286,10 @@ try:
 
         def _pay(self, receiverName : str, amount : float, comment: str) -> int:
             global currentState
+            Q_GETUSERPASSWORD = ("SELECT password "
+                                 "FROM Users "
+                                 "WHERE username = '{}';")
+            global currentState
             balance = getBalance(self._username)
 
             if receiverName == self._username:
@@ -295,9 +300,22 @@ try:
                 print("This receiver does not exist.")
                 return
 
+            if amount == 0:
+                print("Enter a valid amount to pay.")
+                return
+
             if amount > balance:
                 print("You do not have sufficient balance.")
                 return
+
+            inpPwd = input("(Enter to password to proceed with payment) -> ")
+            execute(Q_GETUSERPASSWORD, (self._username, ))
+            userPwd = crsr.fetchone()[0]
+            print(userPwd)
+
+            if inpPwd != userPwd:
+                print("Incorrect password, aborting payment.")
+                currentState = UnlockedState(self._username)
 
             changeBalance(self._username, -amount)
             execute(self._QC_PAY_USER, (self._username, receiverName, str(currentDate), amount, comment))
