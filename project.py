@@ -10,14 +10,16 @@ START, END = '\033[', '\033[0m' # START must also include m after the codes and 
 C_URGENT = START+'1;48;2;255;0;0;38;2;255;255;255m'
 C_IMPORTANT = START+'38;2;241;196;15m'
 C_INFO = START+'1;38;2;0;255;0;1m'
+C_CLRSCRN = START + '2J'
+C_CRSRTOP = START + 'H'
 
 try:
 
     currentState = None
-    TIMEDELTA = 60
+    TIMEDELTA = 10
     currentDate = None
 
-    db = sqlconn.connect(host="localhost", user="root", password="nandan99rd", database="nandan", charset="utf8")
+    db = sqlconn.connect(host="localhost", user="root", password="root", database="t", charset="utf8")
     crsr = db.cursor(buffered=True)
         
     def EXIT(code=0):
@@ -631,9 +633,12 @@ try:
         
         previousTime = time.time()
 
+        print(C_CLRSCRN + END, C_CRSRTOP + END)
+
         while True:
             currentTime = time.time()
             elapsedDays = (currentTime - previousTime) // TIMEDELTA
+            # print(f"{C_URGENT}{currentTime-previousTime},{elapsedDays}{END}")
             currentDate += dt.timedelta(days=elapsedDays)
 
             currentState.process()
