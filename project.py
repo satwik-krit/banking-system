@@ -466,8 +466,7 @@ try:
 
         def _getFDComputedDetails(self, record : tuple):
                 passedTimeDelta = relativedelta(currentDate, record[4])
-
-                yearsPassed = passedTimeDelta.years + (passedTimeDelta.months / 12) + (passedTimeDelta.days / 365.25)
+                yearsPassed = int(passedTimeDelta.years + (passedTimeDelta.months / 12) + (passedTimeDelta.days / 365.25))
                 matured = False if yearsPassed < record[5] else True
                 value = (record[2] * record[3] * (record[5] if matured else yearsPassed) / 100) + record[2]
 
