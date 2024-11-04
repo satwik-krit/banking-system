@@ -7,8 +7,9 @@ from mysql.connector import DataError, DatabaseError, OperationalError, NotSuppo
 
 # TERMINAL COLOR CODES
 START, END = '\033[', '\033[0m' # START must also include m after the codes and before the actual text!
-C_URGENT = START+'48;2;255;0;0;38;2;255;255;255m'
+C_URGENT = START+'1;48;2;255;0;0;38;2;255;255;255m'
 C_IMPORTANT = START+'38;2;241;196;15m'
+C_INFO = START+'1;38;2;0;255;0;1m'
 
 try:
 
@@ -20,13 +21,12 @@ try:
     crsr = db.cursor(buffered=True)
         
     def EXIT(code=0):
-        print("Quit")
+        print(C_INFO+"Quit"+END)
         db.close()
         exit(code)
 
     def execute(query : str, args : tuple) -> None:
-        print(C_IMPORTANT+query.format(*args)+END)
-        # print('\033[31;12;100;1;4m'+query.format(*args)+'\033[0m')
+        # print(C_INFO+query.format(*args)+END)
         crsr.execute(query.format(*args))
 
     def resultExists(result):
