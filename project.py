@@ -1,4 +1,5 @@
 import time
+import os
 from getpass import getpass
 import datetime as dt
 from dateutil.relativedelta import relativedelta
@@ -21,9 +22,14 @@ try:
 
     db = sqlconn.connect(host="localhost", user="root", password="root", database="t", charset="utf8")
     crsr = db.cursor(buffered=True)
-        
+
+    TERM_WIDTH, TERM_HEIGHT = os.get_terminal_size()
+
+    def clrScrn():
+        print(C_CLRSCRN + END, C_CRSRTOP + END)
+
     def EXIT(code=0):
-        print(C_INFO+"Quit"+END)
+        print(C_URGENT+"Quit"+END)
         db.close()
         exit(code)
 
@@ -118,6 +124,12 @@ try:
         execute(_Q_GET_USER, (username,))
         return crsr.fetchone()
 
+    def padx(count, char=' '):
+        return char*count
+
+    def pady(count, char='\n'):
+        return char*count
+
     class LockedState:
         def __init__(self):
             pass
@@ -125,14 +137,14 @@ try:
         def process(self):
             global currentState
 
-            print("======================================================================")
-            print("Enter username and password to view details or create a new account")
-            print("(1) Login")
-            print("(2) Create an account")
-            print("(3) Quit")
+            # print("======================================================================")
+            print(C_INFO+padx(TERM_WIDTH//4)+"Enter username and password to view details or create a new account"+END)
+            print(padx(TERM_WIDTH//4)+"(1) Login")
+            print(padx(TERM_WIDTH//4)+"(2) Create an account")
+            print(padx(TERM_WIDTH//4)+"(3) Quit")
             print()
 
-            option = intInput("(Option) -> ")
+            option = intInput(C_IMPORTANT+padx(TERM_WIDTH//4)+"(Option) -> "+END)
 
             if option == 1:
                 currentState = LoginState()
@@ -145,7 +157,10 @@ try:
 
             else:
                 print()
-                print("Please choose a valid option.")
+                print(padx(TERM_WIDTH//4)+C_URGENT+"Please choose a valid option."+END)
+                time.sleep(1)
+                clrScrn()
+                print(padx(TERM_WIDTH//4)+C_URGENT+"Please choose a valid option."+END)
 
     class LoginState:
         _LOGIN_SUCCESS = 0
@@ -164,22 +179,30 @@ try:
             record = crsr.fetchone()
 
             if record == None:
-                print("Username not found.")
+                print(C_URGENT+padx(TERM_WIDTH//4)+"Username not found."+END)
+                time.sleep(1)
+                clrScrn()
+                print(padx(TERM_WIDTH//4)+C_URGENT+"Username not found."+END)
                 return 
             
             if record[1] != password:
-                print("Incorrect password.")
+                print(C_URGENT+padx(TERM_WIDTH//4)+"Incorrect password."+END)
+                time.sleep(1)
+                clrScrn()
+                print(padx(TERM_WIDTH//4)+C_URGENT+"Incorrect password."+END)
                 return 
             
-            print("Logged in successfully.")
+            print(C_INFO+padx(TERM_WIDTH//4)+"Logged in successfully."+END)
+            time.sleep(1)
+            clrScrn()
 
             global currentState
             currentState = UnlockedState(username)
 
         def process(self):
-            print("=======================================")
-            username = input("(Enter Username) -> ").strip()
-            password = getpass("(Enter Password) -> ").strip()
+            # print("=======================================")
+            username = input(padx(TERM_WIDTH//4)+C_INFO+"(Enter Username) -> "+END).strip()
+            password = getpass(padx(TERM_WIDTH//4)+C_INFO+"(Enter Password) -> "+END).strip()
             print()
 
             self._login(username, password)
@@ -562,12 +585,14 @@ try:
         def _displayUpdates(self, updates):
             # sort updates from most recent to last
             updates.sort(key = lambda x: x[2])
+            i = 0
             for index, update in enumerate(updates):
                 baseContent, extraContent, updateDate = update
                 print()
                 print(f"({index}): {baseContent}")
                 print(f"Date: {updateDate}")
                 print(f"Comment: {extraContent}")
+                inp = input("--More(0 to abort)--")
 
         def process(self):
             global currentState
@@ -632,7 +657,7 @@ try:
         
         previousTime = time.time()
 
-        print(C_CLRSCRN + END, C_CRSRTOP + END)
+        clrScrn()
 
         while True:
             currentTime = time.time()
