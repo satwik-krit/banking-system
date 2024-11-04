@@ -17,7 +17,7 @@ try:
     TIMEDELTA = 60
     currentDate = None
 
-    db = sqlconn.connect(host="localhost", user="root", password="root", database="t", charset="utf8")
+    db = sqlconn.connect(host="localhost", user="root", password="nandan99rd", database="nandan", charset="utf8")
     crsr = db.cursor(buffered=True)
         
     def EXIT(code=0):
@@ -43,13 +43,12 @@ try:
         execute(Q_GET_BALANCE, (username,))
         return crsr.fetchone()[0]
 
-    def changeBalance(username : str, change : int) -> None:
+    def c_changeBalance(username : str, change : int) -> None:
         QC_CHANGE_BALANCE = ("UPDATE Account "
                              "SET balance = balance + {1} "
                              "WHERE username = '{0}'; ")
         
         execute(QC_CHANGE_BALANCE, (username, change))
-        db.commit()
 
     def checkUserExists(username : str) -> bool:
         Q_CHECK_USERNAME = ("SELECT username "
@@ -99,7 +98,7 @@ try:
             execute(_Q_GET_UPDATES_ALL, (username, ))
             return crsr.fetchall()
 
-    def createUpdate(username, baseContent, extraContent="No comment", _date=None):
+    def c_createUpdate(username, baseContent, extraContent="No comment", _date=None):
         _QC_CREATE_UPDATE = ("INSERT INTO Updates "
                              "VALUES "
                              "('{}', '{}', '{}', '{}')")
@@ -108,8 +107,6 @@ try:
             execute(_QC_CREATE_UPDATE, (username, baseContent, extraContent, _date))
         else:
             execute(_QC_CREATE_UPDATE, (username, baseContent, extraContent, currentDate))
-
-        db.commit()
 
     def getUserInfo(username):
         _Q_GET_USER = ("SELECT firstname, lastname, age, phone, inactive "
@@ -341,14 +338,14 @@ try:
                 print("Incorrect password, aborting payment.")
                 currentState = UnlockedState(self._username)
 
-            changeBalance(self._username, -amount)
+            c_changeBalance(self._username, -amount)
             execute(self._QC_PAY_USER, (self._username, receiverName, str(currentDate), amount, comment))
-            changeBalance(receiverName, amount)
+            c_changeBalance(receiverName, amount)
 
             recFirstName = getUserInfo(receiverName)[0]
             userFirstName = getUserInfo(self._username)[0]
-            createUpdate(receiverName, f"{userFirstName} payed {amount}", f"{comment}")
-            createUpdate(self._username, f"Payed {amount} to {recFirstName}", f"{comment}")
+            c_createUpdate(receiverName, f"{userFirstName} payed {amount}", f"{comment}")
+            c_createUpdate(self._username, f"Payed {amount} to {recFirstName}", f"{comment}")
 
             db.commit()
 
@@ -390,8 +387,8 @@ try:
             self._username = username
 
         def _deposit(self, amount : int) -> None:
-            changeBalance(self._username, amount)
-            createUpdate(self._username, f"Deposit {amount}")
+            c_changeBalance(self._username, amount)
+            c_createUpdate(self._username, f"Deposit {amount}")
             db.commit()
 
         def process(self):
@@ -420,11 +417,11 @@ try:
                 print("You do not have sufficient balance.")
                 return
 
-            changeBalance(self._username, -amount)
+            c_changeBalance(self._username, -amount)
             execute(self._QC_CREATE_FD, (name, self._username, amount, 2, str(currentDate), period, 
-                    dt.date.today() + relativedelta(years=period)))
+                    currentDate + relativedelta(years=period)))
+            c_createUpdate(self._username, f"Create {name} FD")
             db.commit()
-            createUpdate(self._username, f"Create {name} FD")
             print("FD created successfully.")
 
         def process(self):
@@ -466,7 +463,7 @@ try:
             self._username = username
 
         def _getFDComputedDetails(self, record : tuple):
-                passedTimeDelta = relativedelta(date.today(), record[4])
+                passedTimeDelta = relativedelta(currentDate, record[4])
 
                 yearsPassed = passedTimeDelta.years + (passedTimeDelta.months / 12) + (passedTimeDelta.days / 365.25)
                 matured = False if yearsPassed < record[5] else True
@@ -507,7 +504,7 @@ try:
             
             computedDetails = self._getFDComputedDetails(record)
             execute(self._QC_WITHDRAW_FD, (self._username, fdName))
-            changeBalance(self._username, computedDetails[2])
+            c_changeBalance(self._username, computedDetails[2])
 
             db.commit()
 
@@ -531,7 +528,7 @@ try:
                 execute(self._Q_GET_ALL_FDS, (self._username,))
                 fdNames = crsr.fetchall()
 
-                if resultExists():
+                if not resultExists(fdNames):
                     print("You don't have any FDs yet.")
                     return
                 
@@ -611,8 +608,6 @@ try:
 
             else:
                 print("Please choose a valid option.")
-
-
 
     if __name__ == '__main__':
         currentState = LockedState()
