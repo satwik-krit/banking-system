@@ -5,6 +5,7 @@ import datetime as dt
 from dateutil.relativedelta import relativedelta
 import mysql.connector as sqlconn
 from mysql.connector import (DataError, DatabaseError, OperationalError, NotSupportedError, IntegrityError, ProgrammingError, InternalError)
+import blessed # to handle key input
 
 # TERMINAL COLOR CODES
 START, END = '\033[', '\033[0m' # START must also include m after the codes and before the actual text!
@@ -35,11 +36,13 @@ CONNECTOR_ROD = "\U00002502"
 try:
 
     currentState = None
+    selectionMode = False
     TIMEDELTA = 10
     currentDate = None
 
     db = sqlconn.connect(host="localhost", user="root", password="root", database="t", charset="utf8")
     crsr = db.cursor(buffered=True)
+    term = blessed.Terminal()
 
     TERM_WIDTH, TERM_HEIGHT = os.get_terminal_size()
 
@@ -156,30 +159,62 @@ try:
         return char*count
 
     class OptionSelector:
-        pass
+        def __init__(self, padding, boxWidth, *options):
+            self.options = options
+            self.boxWidth = boxWidth
+            self.index = 1
+            self.padding = padding
+
+        def show(self):
+            with term.cbreak(), term.hidden_cursor():
+                while True:
+                    clrScrn()
+                    for index, option in enumerate(self.options):
+                        if self.index == index + 1:
+                            surroundBox(f"({index+1}) {option}", self.boxWidth)
+                            continue
+                        print(self.padding+f"({index+1}) {option}")
+
+                    key = term.inkey()
+
+                    if repr(key) == 'KEY_UP':
+                        self.moveUp()
+
+                    elif repr(key) == 'KEY_DOWN':
+                        self.moveDown()
+
+                    elif repr(key) == 'KEY_ENTER':
+                        return self.index
+            
+        def moveDown(self, count=1):
+            if not self.index == len(self.options):
+                self.index += count
+
+        def moveUp(self, count=1):
+            if not self.index == 1: # were already at the topmost option, dont move up from there
+                self.index -= count
 
     class LockedState:
         def __init__(self):
-            pass
+            self.optSelec = OptionSelector(padx(TERM_WIDTH//4), 50, "Login", "Create an account", "Quit")
 
         def process(self):
             global currentState
+            global selectionMode
 
-            # print("======================================================================")
-            print(pady(TERM_HEIGHT//4)+padx(TERM_WIDTH//4)+C_INFO+"Enter username and password to view details or create a new account"+END)
-            # print(padx(TERM_WIDTH//4)+"(1) Login")
-            surroundBox("(1) Login", 30)
-            print(padx(TERM_WIDTH//4)+"(2) Create an account")
-            print(padx(TERM_WIDTH//4)+"(3) Quit")
-            print()
+            selectionMode = True
 
-            option = intInput(C_IMPORTANT+padx(TERM_WIDTH//4)+"(Option) -> "+END)
+            clrScrn()
+
+            option = self.optSelec.show()
 
             if option == 1:
                 currentState = LoginState()
+                selectionMode = False
 
             elif option == 2:
                 currentState = CreateAccountState()
+                selectionMode = False
 
             elif option == 3:
                 EXIT()
@@ -190,7 +225,6 @@ try:
                 time.sleep(1)
                 print(padx(TERM_WIDTH//4)+C_URGENT+"Please choose a valid option."+END)
 
-            clrScrn()
 
     class LoginState:
         _LOGIN_SUCCESS = 0
@@ -234,6 +268,7 @@ try:
             currentState = UnlockedState(self.username)
 
         def process(self):
+            clrScrn()
             if not self.username:
                 print(pady(TERM_HEIGHT//4), end='')
                 surroundBox("(Enter Username) ->",50)
@@ -266,7 +301,7 @@ try:
                               "({}, '{}', {}, '{}'); ")
 
         def __init__(self):
-            pass
+            self.optionSelect = OptionSelector(padx(TERM_WIDTH//4), 40, "Create Account", "Abort")
         
         def _createNewUser(self, username : str, password : str, firstname : str, 
                         lastname : str, age : int, phone : int) -> int:
@@ -277,14 +312,10 @@ try:
         def process(self):
             global currentState
 
-            print("========================================")
-            print("(0) Create account")
-            print("(1) Abort")
-            print()
 
-            option = intInput("(Option) -> ")
+            option = self.optionSelect.show()
 
-            if option == 0:
+            if option == 1:
                 print()
                 username = input("(Enter NEW Username) -> ").strip()
 
@@ -312,7 +343,7 @@ try:
 
                 currentState = UnlockedState(username)
 
-            elif option == 1:
+            elif option == 2:
                 currentState = LockedState()
 
             else:
@@ -709,14 +740,17 @@ try:
 
         clrScrn()
 
-        while True:
-            currentTime = time.time()
-            elapsedDays = (currentTime - previousTime) // TIMEDELTA
-            # print(f"{C_URGENT}{currentTime-previousTime},{elapsedDays}{END}")
-            currentDate += dt.timedelta(days=elapsedDays)
+        with term.fullscreen():
 
-            currentState.process()
-            previousTime = currentTime
+            while True:
+                currentTime = time.time()
+                elapsedDays = (currentTime - previousTime) // TIMEDELTA
+                # print(f"{C_URGENT}{currentTime-previousTime},{elapsedDays}{END}")
+                currentDate += dt.timedelta(days=elapsedDays)
+
+                currentState.process()
+
+                previousTime = currentTime
 
 except (DataError, DatabaseError, OperationalError, NotSupportedError, IntegrityError, ProgrammingError, InternalError) as e:
     print("DB Error!", e)
