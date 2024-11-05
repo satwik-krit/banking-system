@@ -165,7 +165,7 @@ try:
             self.index = 1
             self.padding = padding
 
-        def show(self):
+        def select(self):
             with term.cbreak(), term.hidden_cursor():
                 while True:
                     clrScrn()
@@ -196,7 +196,7 @@ try:
 
     class LockedState:
         def __init__(self):
-            self.optSelec = OptionSelector(padx(TERM_WIDTH//4), 50, "Login", "Create an account", "Quit")
+            self.optionSelector = OptionSelector(padx(TERM_WIDTH//4), 50, "Login", "Create an account", "Quit")
 
         def process(self):
             global currentState
@@ -206,7 +206,7 @@ try:
 
             clrScrn()
 
-            option = self.optSelec.show()
+            option = self.optionSelector.select()
 
             if option == 1:
                 currentState = LoginState()
@@ -301,7 +301,7 @@ try:
                               "({}, '{}', {}, '{}'); ")
 
         def __init__(self):
-            self.optionSelect = OptionSelector(padx(TERM_WIDTH//4), 40, "Create Account", "Abort")
+            self.optionSelector = OptionSelector(padx(TERM_WIDTH//4), 40, "Create Account", "Abort")
         
         def _createNewUser(self, username : str, password : str, firstname : str, 
                         lastname : str, age : int, phone : int) -> int:
@@ -313,7 +313,7 @@ try:
             global currentState
 
 
-            option = self.optionSelect.show()
+            option = self.optionSelector.select()
 
             if option == 1:
                 print()
@@ -353,6 +353,7 @@ try:
     class UnlockedState:
         def __init__(self, username : str):
             self._username = username
+            self.optionSelector = OptionSelector(padx(TERM_WIDTH//4), 70, "Logout", "Pay", "Deposit", "Create a fixed deposit", "Modify/View fixed deposits", "View all updates for your account")
 
         def process(self):
             global currentState
@@ -369,33 +370,33 @@ try:
                 print("TODAY'S UPDATES:", end=" ")
                 for content, _, __ in updates:
                     print(f"{content}", end=", ")
-            print()
-            print("(0) Logout")
-            print("(1) Pay")
-            print("(2) Deposit")
-            print("(3) Create a fixed deposit")
-            print("(4) Modify/View fixed deposits")
-            print("(5) View all updates for your account")
-            print()
+            # print()
+            # print("(0) Logout")
+            # print("(1) Pay")
+            # print("(2) Deposit")
+            # print("(3) Create a fixed deposit")
+            # print("(4) Modify/View fixed deposits")
+            # print("(5) View all updates for your account")
+            # print()
 
-            option = intInput("(Option) -> ")
+            option = self.optionSelector.select()
 
-            if option == 1:
+            if option == 2:
                 currentState = PayState(self._username)
 
-            elif option == 2:
+            elif option == 3:
                 currentState = DepositState(self._username)
 
-            elif option == 3:
+            elif option == 4:
                 currentState = CreateFDState(self._username)
 
-            elif option == 0:
+            elif option == 1:
                 currentState = LockedState()
 
-            elif option == 4:
+            elif option == 5:
                 currentState = ViewFDState(self._username)
             
-            elif option == 5:
+            elif option == 6:
                 currentState = ViewUpdatesState(self._username)
 
             else:
@@ -666,14 +667,14 @@ try:
         def _displayUpdates(self, updates):
             # sort updates from most recent to last
             updates.sort(key = lambda x: x[2])
-            i = 0
             for index, update in enumerate(updates):
                 baseContent, extraContent, updateDate = update
                 print()
                 print(f"({index}): {baseContent}")
                 print(f"Date: {updateDate}")
                 print(f"Comment: {extraContent}")
-                inp = input("--More(0 to abort)--")
+                if index % 4 == 0 and index:
+                    inp = input("--More(0 to abort)--")
 
         def process(self):
             global currentState
