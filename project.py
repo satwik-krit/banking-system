@@ -4,7 +4,7 @@ from getpass import getpass
 import datetime as dt
 from dateutil.relativedelta import relativedelta
 import mysql.connector as sqlconn
-from mysql.connector import DataError, DatabaseError, OperationalError, NotSupportedError, IntegrityError, ProgrammingError, InternalError
+from mysql.connector import (DataError, DatabaseError, OperationalError, NotSupportedError, IntegrityError, ProgrammingError, InternalError)
 
 # TERMINAL COLOR CODES
 START, END = '\033[', '\033[0m' # START must also include m after the codes and before the actual text!
@@ -13,6 +13,24 @@ C_IMPORTANT = START+'38;2;241;196;15m'
 C_INFO = START+'1;38;2;0;255;0;1m'
 C_CLRSCRN = START + '2J'
 C_CRSRTOP = START + 'H'
+CONNECTOR_TOPRIGHT = "\U00002510" 
+CONNECTOR_BOTTOMRIGHT = "\U00002518" 
+CONNECTOR_TOPLEFT = "\U0000250C" 
+CONNECTOR_BOTTOMLEFT = "\U00002514" 
+CONNECTOR_MIDDLE = "\U00002500" 
+CONNECTOR_ROD = "\U00002502"  
+# print ("\U00002518 " ) # ┘
+# print ("\U00002510 "  )# ┐
+# print ("\U0000250C "  )# ┌
+
+# print ("\U00002514 " ) # └
+# print ("\U0000253C " ) # ┼
+# print ("\U00002500 " ) # ─
+# print ("\U0000251C " ) # ├
+# print ("\U00002524 " ) # ┤
+# print ("\U00002534 " ) # ┴))
+# print ("\U0000252C " ) # ┬)
+# print ("\U00002502 "  )# │)
 
 try:
 
@@ -36,6 +54,13 @@ try:
     def execute(query : str, args : tuple) -> None:
         # print(C_INFO+query.format(*args)+END)
         crsr.execute(query.format(*args))
+
+    def surroundBox(text, length):
+        textPadding = ' ' * (length - len(text))
+        print(padx(TERM_WIDTH//4)+C_INFO+CONNECTOR_TOPLEFT+CONNECTOR_MIDDLE*length+CONNECTOR_TOPRIGHT+END)
+        print(padx(TERM_WIDTH//4)+C_INFO+CONNECTOR_ROD+text+textPadding+CONNECTOR_ROD+END)
+        print(padx(TERM_WIDTH//4)+C_INFO+CONNECTOR_BOTTOMLEFT+CONNECTOR_MIDDLE*length+CONNECTOR_BOTTOMRIGHT+END)
+
 
     def resultExists(result):
         if len(result):
@@ -130,6 +155,9 @@ try:
     def pady(count, char='\n'):
         return char*count
 
+    class OptionSelector:
+        pass
+
     class LockedState:
         def __init__(self):
             pass
@@ -138,8 +166,9 @@ try:
             global currentState
 
             # print("======================================================================")
-            print(C_INFO+padx(TERM_WIDTH//4)+"Enter username and password to view details or create a new account"+END)
-            print(padx(TERM_WIDTH//4)+"(1) Login")
+            print(pady(TERM_HEIGHT//4)+padx(TERM_WIDTH//4)+C_INFO+"Enter username and password to view details or create a new account"+END)
+            # print(padx(TERM_WIDTH//4)+"(1) Login")
+            surroundBox("(1) Login", 30)
             print(padx(TERM_WIDTH//4)+"(2) Create an account")
             print(padx(TERM_WIDTH//4)+"(3) Quit")
             print()
@@ -159,8 +188,9 @@ try:
                 print()
                 print(padx(TERM_WIDTH//4)+C_URGENT+"Please choose a valid option."+END)
                 time.sleep(1)
-                clrScrn()
                 print(padx(TERM_WIDTH//4)+C_URGENT+"Please choose a valid option."+END)
+
+            clrScrn()
 
     class LoginState:
         _LOGIN_SUCCESS = 0
@@ -172,21 +202,25 @@ try:
                          "WHERE username = '{}'; ")
 
         def __init__(self):
-            pass
+            self.username = None
+            self.password = None
 
-        def _login(self, username : str, password : str) -> int:
-            execute(self._Q_LOGIN_USER, (username,))
+        def _login(self) -> int:
+            execute(self._Q_LOGIN_USER, (self.username,))
             record = crsr.fetchone()
 
             if record == None:
-                print(C_URGENT+padx(TERM_WIDTH//4)+"Username not found."+END)
+                print(padx(TERM_WIDTH//4)+C_URGENT+"Username not found."+END)
+                self.username = None
+                self.password = None
                 time.sleep(1)
                 clrScrn()
                 print(padx(TERM_WIDTH//4)+C_URGENT+"Username not found."+END)
                 return 
             
-            if record[1] != password:
-                print(C_URGENT+padx(TERM_WIDTH//4)+"Incorrect password."+END)
+            if record[1] != self.password:
+                print(padx(TERM_WIDTH//4)+C_URGENT+"Incorrect password."+END)
+                self.password = None
                 time.sleep(1)
                 clrScrn()
                 print(padx(TERM_WIDTH//4)+C_URGENT+"Incorrect password."+END)
@@ -197,15 +231,31 @@ try:
             clrScrn()
 
             global currentState
-            currentState = UnlockedState(username)
+            currentState = UnlockedState(self.username)
 
         def process(self):
-            # print("=======================================")
-            username = input(padx(TERM_WIDTH//4)+C_INFO+"(Enter Username) -> "+END).strip()
-            password = getpass(padx(TERM_WIDTH//4)+C_INFO+"(Enter Password) -> "+END).strip()
-            print()
+            if not self.username:
+                print(pady(TERM_HEIGHT//4), end='')
+                surroundBox("(Enter Username) ->",50)
+                print("\033[3F"+END) # Move cursor up by n lines
+                self.username = input(padx(TERM_WIDTH//4)+C_INFO+CONNECTOR_ROD+"(Enter Username) -> "+END)
+                clrScrn()
+                return
 
-            self._login(username, password)
+            elif not self.password:
+                print(pady(TERM_HEIGHT//4)+padx(TERM_WIDTH//4)+C_INFO+"(Enter Username) -> "+self.username+END)
+                print("\033[1F"+END) # Move cursor up by n lines
+                surroundBox("(Enter Password) ->", 50)
+                print("\033[3F"+END)
+
+                self.password = getpass(padx(TERM_WIDTH//4)+C_INFO+CONNECTOR_ROD+"(Enter Password) -> ").strip()
+                clrScrn()
+                return
+
+            else:
+                print(pady(TERM_HEIGHT//2-5)+padx(TERM_WIDTH//4)+C_INFO+"(Enter Username) -> "+self.username+END)
+                print(padx(TERM_WIDTH//4)+C_INFO+"(Enter Password) -> "+END)
+                self._login()
 
     class CreateAccountState:
         _QC_CREATE_USER = ("INSERT INTO Users VALUES "
