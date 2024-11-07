@@ -9,11 +9,23 @@ import blessed # to handle key input
 
 # TERMINAL COLOR CODES
 START, END = '\033[', '\033[0m' # START must also include m after the codes and before the actual text!
+# When using colors and font effects, the color must follow the effect since it contains 'm', include 
+# m in the string if only font effects are used
+C_FG_RED, C_FG_BLUE, C_FG_GREEN, C_FG_YELLOW, C_FG_WHITE = ';38;5;9', ';38;5;12', ';38;5;10', ';38;5;11', ';38;5;15'
+C_BG_RED, C_BG_BLUE, C_BG_GREEN, C_BG_YELLOW = ';48;5;9', ';38;5;12', ';38;5;10', ';38;5;11'
+C_BOLD, C_UNDERLINE = '1', '4'
+C_CLRSCRN = START + '2J'
+C_CRSRTOP = START + 'H'
+
 C_URGENT = START+'1;48;2;255;0;0;38;2;255;255;255m'
 C_IMPORTANT = START+'38;2;241;196;15m'
 C_INFO = START+'1;38;2;0;255;0;1m'
-C_CLRSCRN = START + '2J'
-C_CRSRTOP = START + 'H'
+STATUS = {
+            "INFO": START+C_BG_GREEN+C_FG_YELLOW+'m',
+            "IMPORTANT": START+C_FG_YELLOW+'m',
+            "URGENT": START+C_BG_RED+C_FG_WHITE + 'm'
+
+        }
 CONNECTOR_TOPRIGHT = "\U00002510" 
 CONNECTOR_BOTTOMRIGHT = "\U00002518" 
 CONNECTOR_TOPLEFT = "\U0000250C" 
@@ -158,6 +170,12 @@ try:
     def pady(count, char='\n'):
         return char*count
 
+    def displayMessage(content, msgLevel):
+        print(padx(TERM_WIDTH//4)+STATUS[msgLevel]+content+END)
+        time.sleep(1)
+        clrScrn()
+        print(padx(TERM_WIDTH//4)+STATUS[msgLevel]+content+END)
+
     class OptionSelector:
         def __init__(self, padding, boxWidth, *options):
             self.options = options
@@ -166,7 +184,9 @@ try:
             self.padding = padding
 
         def select(self):
-            with term.cbreak(), term.hidden_cursor():
+            with term.cbreak():
+                print(START+"?25l"+END) # hide the cursor
+
                 while True:
                     clrScrn()
                     for index, option in enumerate(self.options):
@@ -184,7 +204,9 @@ try:
                         self.moveDown()
 
                     elif repr(key) == 'KEY_ENTER':
+                        print(START+"?25h"+END)  # show the cursor
                         return self.index
+
             
         def moveDown(self, count=1):
             if not self.index == len(self.options):
@@ -244,20 +266,18 @@ try:
             record = crsr.fetchone()
 
             if record == None:
-                print(padx(TERM_WIDTH//4)+C_URGENT+"Username not found."+END)
+                # print(padx(TERM_WIDTH//4)+C_URGENT+"Username not found."+END)
                 self.username = None
                 self.password = None
-                time.sleep(1)
-                clrScrn()
-                print(padx(TERM_WIDTH//4)+C_URGENT+"Username not found."+END)
+                # time.sleep(1)
+                # clrScrn()
+                displayMessage("Username not found.", "URGENT")
+                # print(padx(TERM_WIDTH//4)+C_URGENT+"Username not found."+END)
                 return 
             
             if record[1] != self.password:
-                print(padx(TERM_WIDTH//4)+C_URGENT+"Incorrect password."+END)
                 self.password = None
-                time.sleep(1)
-                clrScrn()
-                print(padx(TERM_WIDTH//4)+C_URGENT+"Incorrect password."+END)
+                displayMessage("Incorrect password.", "URGENT")
                 return 
             
             print(C_INFO+padx(TERM_WIDTH//4)+"Logged in successfully."+END)
@@ -753,12 +773,14 @@ try:
 
                 previousTime = currentTime
 
+
+
 except (DataError, DatabaseError, OperationalError, NotSupportedError, IntegrityError, ProgrammingError, InternalError) as e:
     print("DB Error!", e)
 
 except KeyboardInterrupt:
     EXIT(0)
 
-except Exception as e:
-    print("ERROR: ", e)
-    EXIT(1)
+# except Exception as e:
+#     print("ERROR: ", e)
+#     EXIT(1)
