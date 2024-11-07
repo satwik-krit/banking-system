@@ -289,28 +289,20 @@ try:
 
         def process(self):
             clrScrn()
-            if not self.username:
-                print(pady(TERM_HEIGHT//4), end='')
-                surroundBox("(Enter Username) ->",50)
-                print("\033[3F"+END) # Move cursor up by n lines
-                self.username = input(padx(TERM_WIDTH//4)+C_INFO+CONNECTOR_ROD+"(Enter Username) -> "+END)
-                clrScrn()
-                return
 
-            elif not self.password:
-                print(pady(TERM_HEIGHT//4)+padx(TERM_WIDTH//4)+C_INFO+"(Enter Username) -> "+self.username+END)
-                print("\033[1F"+END) # Move cursor up by n lines
-                surroundBox("(Enter Password) ->", 50)
-                print("\033[3F"+END)
+            print(pady(TERM_HEIGHT//4), end='')
+            surroundBox("(Enter Username) ->",50)
+            print("\033[3F"+END) # Move cursor up by n lines
 
-                self.password = getpass(padx(TERM_WIDTH//4)+C_INFO+CONNECTOR_ROD+"(Enter Password) -> ").strip()
-                clrScrn()
-                return
+            self.username = input(padx(TERM_WIDTH//4)+C_INFO+CONNECTOR_ROD+"(Enter Username) -> "+END)
+            surroundBox("(Enter Password) ->", 50)
 
-            else:
-                print(pady(TERM_HEIGHT//2-5)+padx(TERM_WIDTH//4)+C_INFO+"(Enter Username) -> "+self.username+END)
-                print(padx(TERM_WIDTH//4)+C_INFO+"(Enter Password) -> "+END)
-                self._login()
+            print("\033[3F"+END)
+            self.password = getpass(padx(TERM_WIDTH//4)+C_INFO+CONNECTOR_ROD+"(Enter Password) -> ").strip()
+
+            print("\033[1E"+END)
+
+            self._login()
 
     class CreateAccountState:
         _QC_CREATE_USER = ("INSERT INTO Users VALUES "
