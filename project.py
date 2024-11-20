@@ -1,81 +1,25 @@
 import time
-import os
 from getpass import getpass
 import datetime as dt
 from dateutil.relativedelta import relativedelta
 import mysql.connector as sqlconn
-from mysql.connector import (DataError, DatabaseError, OperationalError, NotSupportedError, IntegrityError, ProgrammingError, InternalError)
-import blessed # to handle key input
-
-# TERMINAL COLOR CODES
-START, END = '\033[', '\033[0m' # START must also include m after the codes and before the actual text!
-# When using colors and font effects, the color must follow the effect since it contains 'm', include 
-# m in the string if only font effects are used
-C_FG_RED, C_FG_BLUE, C_FG_GREEN, C_FG_YELLOW, C_FG_WHITE = ';38;5;9', ';38;5;12', ';38;5;10', ';38;5;11', ';38;5;15'
-C_BG_RED, C_BG_BLUE, C_BG_GREEN, C_BG_YELLOW = ';48;5;9', ';38;5;12', ';38;5;10', ';38;5;11'
-C_BOLD, C_UNDERLINE = '1', '4'
-C_CLRSCRN = START + '2J'
-C_CRSRTOP = START + 'H'
-
-C_URGENT = START+'1;48;2;255;0;0;38;2;255;255;255m'
-C_IMPORTANT = START+'38;2;241;196;15m'
-C_INFO = START+'1;38;2;0;255;0;1m'
-STATUS = {
-            "INFO": START+C_BG_GREEN+C_FG_YELLOW+'m',
-            "IMPORTANT": START+C_FG_YELLOW+'m',
-            "URGENT": START+C_BG_RED+C_FG_WHITE + 'm'
-
-        }
-CONNECTOR_TOPRIGHT = "\U00002510" 
-CONNECTOR_BOTTOMRIGHT = "\U00002518" 
-CONNECTOR_TOPLEFT = "\U0000250C" 
-CONNECTOR_BOTTOMLEFT = "\U00002514" 
-CONNECTOR_MIDDLE = "\U00002500" 
-CONNECTOR_ROD = "\U00002502"  
-# print ("\U00002518 " ) # ┘
-# print ("\U00002510 "  )# ┐
-# print ("\U0000250C "  )# ┌
-
-# print ("\U00002514 " ) # └
-# print ("\U0000253C " ) # ┼
-# print ("\U00002500 " ) # ─
-# print ("\U0000251C " ) # ├
-# print ("\U00002524 " ) # ┤
-# print ("\U00002534 " ) # ┴))
-# print ("\U0000252C " ) # ┬)
-# print ("\U00002502 "  )# │)
+from mysql.connector import DataError, DatabaseError, OperationalError, NotSupportedError, IntegrityError, ProgrammingError, InternalError
 
 try:
 
     currentState = None
-    selectionMode = False
-    TIMEDELTA = 10
+    TIMEDELTA = 2
     currentDate = None
 
-    db = sqlconn.connect(host="localhost", user="root", password="root", database="t", charset="utf8")
+    db = sqlconn.connect(host="localhost", user="root", password="VSE@2022", database="bank", charset="utf8")
     crsr = db.cursor(buffered=True)
-    term = blessed.Terminal()
-
-    TERM_WIDTH, TERM_HEIGHT = os.get_terminal_size()
-
-    def clrScrn():
-        print(C_CLRSCRN + END, C_CRSRTOP + END)
-
+        
     def EXIT(code=0):
-        print(C_URGENT+"Quit"+END)
         db.close()
         exit(code)
 
     def execute(query : str, args : tuple) -> None:
-        # print(C_INFO+query.format(*args)+END)
         crsr.execute(query.format(*args))
-
-    def surroundBox(text, length):
-        textPadding = ' ' * (length - len(text))
-        print(padx(TERM_WIDTH//4)+C_INFO+CONNECTOR_TOPLEFT+CONNECTOR_MIDDLE*length+CONNECTOR_TOPRIGHT+END)
-        print(padx(TERM_WIDTH//4)+C_INFO+CONNECTOR_ROD+text+textPadding+CONNECTOR_ROD+END)
-        print(padx(TERM_WIDTH//4)+C_INFO+CONNECTOR_BOTTOMLEFT+CONNECTOR_MIDDLE*length+CONNECTOR_BOTTOMRIGHT+END)
-
 
     def resultExists(result):
         if len(result):
@@ -98,12 +42,13 @@ try:
         
         execute(QC_CHANGE_BALANCE, (username, change))
 
-    def checkUserExists(username : str) -> bool:
+    def userExists(username : str) -> bool:
         Q_CHECK_USERNAME = ("SELECT username "
                             "FROM Users "
                             "WHERE username = '{}';")
 
         execute(Q_CHECK_USERNAME, (username,))
+
         if len(crsr.fetchall()) != 0:
             return True
         else:
@@ -164,145 +109,70 @@ try:
         execute(_Q_GET_USER, (username,))
         return crsr.fetchone()
 
-    def padx(count, char=' '):
-        return char*count
-
-    def pady(count, char='\n'):
-        return char*count
-
-    def displayMessage(content, msgLevel):
-        print(padx(TERM_WIDTH//4)+STATUS[msgLevel]+content+END)
-        time.sleep(1)
-        clrScrn()
-        print(padx(TERM_WIDTH//4)+STATUS[msgLevel]+content+END)
-
-    class OptionSelector:
-        def __init__(self, padding, boxWidth, *options):
-            self.options = options
-            self.boxWidth = boxWidth
-            self.index = 1
-            self.padding = padding
-
-        def select(self):
-            with term.cbreak():
-                print(START+"?25l"+END) # hide the cursor
-
-                while True:
-                    clrScrn()
-                    for index, option in enumerate(self.options):
-                        if self.index == index + 1:
-                            surroundBox(f"({index+1}) {option}", self.boxWidth)
-                            continue
-                        print(self.padding+f"({index+1}) {option}")
-
-                    key = term.inkey()
-
-                    if repr(key) == 'KEY_UP':
-                        self.moveUp()
-
-                    elif repr(key) == 'KEY_DOWN':
-                        self.moveDown()
-
-                    elif repr(key) == 'KEY_ENTER':
-                        print(START+"?25h"+END)  # show the cursor
-                        return self.index
-
-            
-        def moveDown(self, count=1):
-            if not self.index == len(self.options):
-                self.index += count
-
-        def moveUp(self, count=1):
-            if not self.index == 1: # were already at the topmost option, dont move up from there
-                self.index -= count
-
     class LockedState:
         def __init__(self):
-            self.optionSelector = OptionSelector(padx(TERM_WIDTH//4), 50, "Login", "Create an account", "Quit")
+            pass
 
         def process(self):
             global currentState
-            global selectionMode
 
-            selectionMode = True
+            print("======================================================================")
+            print("Enter username and password to view details or create a new account")
+            print("(1) Login")
+            print("(2) Create an account")
+            print("(3) Quit")
+            print()
 
-            clrScrn()
-
-            option = self.optionSelector.select()
+            option = intInput("(Option) -> ")
 
             if option == 1:
                 currentState = LoginState()
-                selectionMode = False
 
             elif option == 2:
                 currentState = CreateAccountState()
-                selectionMode = False
 
             elif option == 3:
                 EXIT()
 
             else:
                 print()
-                print(padx(TERM_WIDTH//4)+C_URGENT+"Please choose a valid option."+END)
-                time.sleep(1)
-                print(padx(TERM_WIDTH//4)+C_URGENT+"Please choose a valid option."+END)
-
+                print("Please choose a valid option.")
 
     class LoginState:
-        _LOGIN_SUCCESS = 0
-        _LOGIN_PASSWORD_INCORRECT = 1
-        _LOGIN_USER_NOTFOUND = 2
-
         _Q_LOGIN_USER = ("SELECT username, password "
                          "FROM Users "
                          "WHERE username = '{}'; ")
 
         def __init__(self):
-            self.username = None
-            self.password = None
+            pass
 
-        def _login(self) -> int:
-            execute(self._Q_LOGIN_USER, (self.username,))
+        def _login(self, username : str, password : str) -> int:
+            global currentState
+
+            execute(self._Q_LOGIN_USER, (username,))
             record = crsr.fetchone()
 
             if record == None:
-                # print(padx(TERM_WIDTH//4)+C_URGENT+"Username not found."+END)
-                self.username = None
-                self.password = None
-                # time.sleep(1)
-                # clrScrn()
-                displayMessage("Username not found.", "URGENT")
-                # print(padx(TERM_WIDTH//4)+C_URGENT+"Username not found."+END)
-                return 
+                print("Username not found.")
+                currentState = LockedState()
+                return
             
-            if record[1] != self.password:
-                self.password = None
-                displayMessage("Incorrect password.", "URGENT")
-                return 
-            
-            print(C_INFO+padx(TERM_WIDTH//4)+"Logged in successfully."+END)
-            time.sleep(1)
-            clrScrn()
+            if record[1] != password:
+                print("Incorrect password.")
+                currentState = LockedState()
+                return
 
-            global currentState
-            currentState = UnlockedState(self.username)
+            print("Logged in successfully.")
+
+            currentState = UnlockedState(username)
 
         def process(self):
-            clrScrn()
+            print("=======================================")
+            username = input("(Enter Username) -> ").strip()
+            password = getpass("(Enter Password) -> ").strip()
+            print()
 
-            print(pady(TERM_HEIGHT//4), end='')
-            surroundBox("(Enter Username) ->",50)
-            print("\033[3F"+END) # Move cursor up by n lines
-
-            self.username = input(padx(TERM_WIDTH//4)+C_INFO+CONNECTOR_ROD+"(Enter Username) -> "+END)
-            surroundBox("(Enter Password) ->", 50)
-
-            print("\033[3F"+END)
-            self.password = getpass(padx(TERM_WIDTH//4)+C_INFO+CONNECTOR_ROD+"(Enter Password) -> ").strip()
-
-            print("\033[1E"+END)
-
-            self._login()
+            self._login(username, password)
 
     class CreateAccountState:
         _QC_CREATE_USER = ("INSERT INTO Users VALUES "
@@ -313,7 +183,7 @@ try:
                               "({}, '{}', {}, '{}'); ")
 
         def __init__(self):
-            self.optionSelector = OptionSelector(padx(TERM_WIDTH//4), 40, "Create Account", "Abort")
+            pass
         
         def _createNewUser(self, username : str, password : str, firstname : str, 
                         lastname : str, age : int, phone : int) -> int:
@@ -324,14 +194,18 @@ try:
         def process(self):
             global currentState
 
+            print("========================================")
+            print("(0) Create account")
+            print("(1) Abort")
+            print()
 
-            option = self.optionSelector.select()
+            option = intInput("(Option) -> ")
 
-            if option == 1:
+            if option == 0:
                 print()
                 username = input("(Enter NEW Username) -> ").strip()
 
-                if checkUserExists(username):
+                if userExists(username):
                     print()
                     print("Username not unique.")
                     return
@@ -355,7 +229,7 @@ try:
 
                 currentState = UnlockedState(username)
 
-            elif option == 2:
+            elif option == 1:
                 currentState = LockedState()
 
             else:
@@ -365,7 +239,6 @@ try:
     class UnlockedState:
         def __init__(self, username : str):
             self._username = username
-            self.optionSelector = OptionSelector(padx(TERM_WIDTH//4), 70, "Logout", "Pay", "Deposit", "Create a fixed deposit", "Modify/View fixed deposits", "View all updates for your account")
 
         def process(self):
             global currentState
@@ -382,33 +255,33 @@ try:
                 print("TODAY'S UPDATES:", end=" ")
                 for content, _, __ in updates:
                     print(f"{content}", end=", ")
-            # print()
-            # print("(0) Logout")
-            # print("(1) Pay")
-            # print("(2) Deposit")
-            # print("(3) Create a fixed deposit")
-            # print("(4) Modify/View fixed deposits")
-            # print("(5) View all updates for your account")
-            # print()
+            print()
+            print("(0) Logout")
+            print("(1) Pay")
+            print("(2) Deposit")
+            print("(3) Create a fixed deposit")
+            print("(4) Modify/View fixed deposits")
+            print("(5) View all updates for your account")
+            print()
 
-            option = self.optionSelector.select()
+            option = intInput("(Option) -> ")
 
-            if option == 2:
+            if option == 1:
                 currentState = PayState(self._username)
 
-            elif option == 3:
+            elif option == 2:
                 currentState = DepositState(self._username)
 
-            elif option == 4:
+            elif option == 3:
                 currentState = CreateFDState(self._username)
 
-            elif option == 1:
+            elif option == 0:
                 currentState = LockedState()
 
-            elif option == 5:
+            elif option == 4:
                 currentState = ViewFDState(self._username)
             
-            elif option == 6:
+            elif option == 5:
                 currentState = ViewUpdatesState(self._username)
 
             else:
@@ -420,15 +293,17 @@ try:
                         "(payerID, receiverID, transDate, amount, comment) "
                         "VALUES "
                         "('{}', '{}', '{}', {}, '{}'); ")
+        
+        _Q_GETUSERPASSWORD = ("SELECT password "
+                              "FROM Users "
+                              "WHERE username = '{}'; ")
 
         def __init__(self, username : str):
             self._username = username
 
         def _pay(self, receiverName : str, amount : float, comment: str) -> int:
             global currentState
-            Q_GETUSERPASSWORD = ("SELECT password "
-                                 "FROM Users "
-                                 "WHERE username = '{}';")
+
             global currentState
             balance = getBalance(self._username)
 
@@ -436,7 +311,7 @@ try:
                 print("You cannot pay yourself.")
                 return
 
-            if not checkUserExists(receiverName):
+            if not userExists(receiverName):
                 print("This receiver does not exist.")
                 return
 
@@ -448,14 +323,13 @@ try:
                 print("You do not have sufficient balance.")
                 return
 
-            inpPwd = getpass("(Enter to password to proceed with payment) -> ")
-            execute(Q_GETUSERPASSWORD, (self._username, ))
+            inpPwd = getpass("(Enter password to proceed with payment) -> ")
+            execute(self._Q_GETUSERPASSWORD, (self._username, ))
             userPwd = crsr.fetchone()[0]
-            print(userPwd)
 
             if inpPwd != userPwd:
                 print("Incorrect password, aborting payment.")
-                currentState = UnlockedState(self._username)
+                return
 
             c_changeBalance(self._username, -amount)
             execute(self._QC_PAY_USER, (self._username, receiverName, str(currentDate), amount, comment))
@@ -463,14 +337,12 @@ try:
 
             recFirstName = getUserInfo(receiverName)[0]
             userFirstName = getUserInfo(self._username)[0]
-            c_createUpdate(receiverName, f"{userFirstName} payed {amount}", f"{comment}")
-            c_createUpdate(self._username, f"Payed {amount} to {recFirstName}", f"{comment}")
+            c_createUpdate(receiverName, f"{userFirstName} paid {amount}", f"{comment}")
+            c_createUpdate(self._username, f"Paid {amount} to {recFirstName}", f"{comment}")
 
             db.commit()
 
             print("Transaction made successfully.")
-
-            currentState = UnlockedState(self._username)
 
         def process(self):
             global currentState
@@ -623,6 +495,7 @@ try:
             computedDetails = self._getFDComputedDetails(record)
             execute(self._QC_WITHDRAW_FD, (self._username, fdName))
             c_changeBalance(self._username, computedDetails[2])
+            c_createUpdate(self._username, f"Withdrew amount {computedDetails[2]} from FD {fdName}.")
 
             db.commit()
 
@@ -677,6 +550,10 @@ try:
             self._username = username
 
         def _displayUpdates(self, updates):
+            if not resultExists(updates) :
+                print("You have no updates for the requested query.")
+                return
+
             # sort updates from most recent to last
             updates.sort(key = lambda x: x[2])
             for index, update in enumerate(updates):
@@ -685,8 +562,6 @@ try:
                 print(f"({index}): {baseContent}")
                 print(f"Date: {updateDate}")
                 print(f"Comment: {extraContent}")
-                if index % 4 == 0 and index:
-                    inp = input("--More(0 to abort)--")
 
         def process(self):
             global currentState
@@ -701,24 +576,15 @@ try:
 
             if option == 0:
                 updates = getUpdates(self._username)
-                if not resultExists(updates):
-                    print("You have no updates for your account.")
-                
-                else:
-                    self._displayUpdates(updates)
+                self._displayUpdates(updates)
 
             elif option == 1:
                 inp = input("(Required date, in YYYY-MM-DD format) -> ")
 
                 try:
-                    _date = dt.date.fromisoformat(inp)
-                    updates = getUpdates(self._username, _date)
-
-                    if not resultExists(updates ):
-                        print(f"You have no updates for your account at {inp}.")
-                    
-                    else:
-                        self._displayUpdates(updates)
+                    date = dt.date.fromisoformat(inp)
+                    updates = getUpdates(self._username, date)
+                    self._displayUpdates(updates)
 
                 except ValueError:
                     print("Invalid date.")
@@ -741,31 +607,17 @@ try:
         creationDateTime = crsr.fetchone()[0]
         creationTime = creationDateTime.timestamp()
         creationDate = creationDateTime.date()
-        currentTime = time.time() # Get time since epoch
 
-        elapsedTime = currentTime - creationTime # in seconds
-        
-        elapsedDays = elapsedTime // TIMEDELTA # Days according to us
+        previousTime = creationTime
+        currentDate = creationDate
 
-        currentDate = creationDate + dt.timedelta(days=elapsedDays)
-        
-        previousTime = time.time()
+        while True:
+            currentTime = time.time()
+            elapsedDays = (currentTime - previousTime) // TIMEDELTA
+            currentDate += dt.timedelta(days=elapsedDays)
 
-        clrScrn()
-
-        with term.fullscreen():
-
-            while True:
-                currentTime = time.time()
-                elapsedDays = (currentTime - previousTime) // TIMEDELTA
-                # print(f"{C_URGENT}{currentTime-previousTime},{elapsedDays}{END}")
-                currentDate += dt.timedelta(days=elapsedDays)
-
-                currentState.process()
-
-                previousTime = currentTime
-
-
+            currentState.process()
+            previousTime = currentTime
 
 except (DataError, DatabaseError, OperationalError, NotSupportedError, IntegrityError, ProgrammingError, InternalError) as e:
     print("DB Error!", e)
@@ -773,6 +625,6 @@ except (DataError, DatabaseError, OperationalError, NotSupportedError, Integrity
 except KeyboardInterrupt:
     EXIT(0)
 
-# except Exception as e:
-#     print("ERROR: ", e)
-#     EXIT(1)
+except Exception as e:
+    print("ERROR: ", e)
+    EXIT(1)

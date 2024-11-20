@@ -77,7 +77,7 @@ CREATE TABLE Updates (
 );
 
 CREATE TABLE EnvInfo (
-    DBCreationDateTime DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    DBCreationDateTime TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Let MySQL fill EnvInfo with the required data.
