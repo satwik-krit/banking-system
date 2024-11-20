@@ -11,7 +11,7 @@ try:
     TIMEDELTA = 0.2
     currentDate = None
 
-    db = sqlconn.connect(host="localhost", user="root", password="nandan99rd", database="bank", charset="utf8")
+    db = sqlconn.connect(host="localhost", user="root", password="root", database="bank", charset="utf8")
     crsr = db.cursor(buffered=True)
         
     def EXIT(code=0):
