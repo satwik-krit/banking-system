@@ -8,10 +8,10 @@ from mysql.connector import DataError, DatabaseError, OperationalError, NotSuppo
 try:
 
     currentState = None
-    TIMEDELTA = 2
+    TIMEDELTA = 0.2
     currentDate = None
 
-    db = sqlconn.connect(host="localhost", user="root", password="VSE@2022", database="bank", charset="utf8")
+    db = sqlconn.connect(host="localhost", user="root", password="nandan99rd", database="bank", charset="utf8")
     crsr = db.cursor(buffered=True)
         
     def EXIT(code=0):

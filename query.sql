@@ -1,4 +1,7 @@
-DROP TABLE IF EXISTS users;
+DROP DATABASE IF EXISTS Bank;
+CREATE DATABASE Bank;
+USE Bank;
+
 CREATE TABLE Users (
     password VARCHAR(10) NOT NULL,
     username VARCHAR(50),
@@ -12,7 +15,6 @@ CREATE TABLE Users (
     CHECK(age > 0)
 );
 
-DROP TABLE IF EXISTS Account;
 CREATE TABLE Account (
     balance INT NOT NULL,
     created DATE NOT NULL,
@@ -26,7 +28,6 @@ CREATE TABLE Account (
     ON UPDATE CASCADE
 );
 
-DROP TABLE IF EXISTS FixedDepo;
 CREATE TABLE FixedDepo (
     fdName VARCHAR(30),
     username VARCHAR(50),
@@ -47,7 +48,6 @@ CREATE TABLE FixedDepo (
     ON UPDATE CASCADE
 );
 
-DROP TABLE IF EXISTS Transactions;
 CREATE TABLE Transactions (
     transID INT AUTO_INCREMENT,
     payerID VARCHAR(50) NOT NULL,
@@ -66,7 +66,6 @@ CREATE TABLE Transactions (
     ON UPDATE CASCADE
 );
 
-DROP TABLE IF EXISTS Updates;
 CREATE TABLE Updates (
     username VARCHAR(50) NOT NULL,
     baseContent TINYTEXT NOT NULL,
@@ -80,6 +79,5 @@ CREATE TABLE EnvInfo (
     DBCreationDateTime TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Let MySQL fill EnvInfo with the required data.
 INSERT INTO EnvInfo 
 VALUES ();
